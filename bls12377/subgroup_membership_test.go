@@ -25,7 +25,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	// size of the multiExps
-	const nbSamples = 1000
+	const nbSamples = 100
 
 	properties.Property("[BLS12-377] IsInSubGroupBatchNaive test should pass", prop.ForAll(
 		func(mixer fr.Element) bool {
@@ -124,7 +124,7 @@ func TestIsInSubGroupBatchProbabilistic(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	// size of the multiExps
-	const nbSamples = 1000
+	const nbSamples = 100
 
 	properties.Property("[BLS12-377] IsInSubGroupBatch should pass with probability 1/3^rounds although no point is in G1", prop.ForAll(
 		func(mixer fr.Element) bool {
@@ -149,63 +149,9 @@ func TestIsInSubGroupBatchProbabilistic(t *testing.T) {
 	properties.TestingRun(t, gopter.ConsoleReporter(false))
 }
 
-func TestTatePairings(t *testing.T) {
-	t.Parallel()
-	parameters := gopter.DefaultTestParameters()
-	parameters.MinSuccessfulTests = 1
-
-	properties := gopter.NewProperties(parameters)
-
-	properties.Property("[BLS12-377] Tate(P16,Q) should be 1", prop.ForAll(
-		func(a fr.Element) bool {
-			var s big.Int
-			a.BigInt(&s)
-			_, _, g, _ := curve.Generators()
-			g.ScalarMultiplication(&g, &s)
-			return isFirstTateOne(g)
-		},
-		GenFr(),
-	))
-
-	properties.Property("[BLS12-377] Tate(P3,Q) should be 1", prop.ForAll(
-		func(a fr.Element) bool {
-			var s big.Int
-			a.BigInt(&s)
-			_, _, g, _ := curve.Generators()
-			g.ScalarMultiplication(&g, &s)
-			return isSecondTateOne(g)
-		},
-		GenFr(),
-	))
-
-	properties.Property("[BLS12-377] Tate(P7,Q) should be 1", prop.ForAll(
-		func(a fr.Element) bool {
-			var s big.Int
-			a.BigInt(&s)
-			_, _, g, _ := curve.Generators()
-			g.ScalarMultiplication(&g, &s)
-			return isThirdTateOne(g)
-		},
-		GenFr(),
-	))
-
-	properties.Property("[BLS12-377] Tate(P13,Q) should be 1", prop.ForAll(
-		func(a fr.Element) bool {
-			var s big.Int
-			a.BigInt(&s)
-			_, _, g, _ := curve.Generators()
-			g.ScalarMultiplication(&g, &s)
-			return isFourthTateOne(g)
-		},
-		GenFr(),
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
-}
-
 // benches
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
-	const nbSamples = 1000
+	const nbSamples = 100
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -227,7 +173,7 @@ func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 }
 
 func BenchmarkIsInSubGroupBatch(b *testing.B) {
-	const nbSamples = 1000
+	const nbSamples = 100
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()

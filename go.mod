@@ -1,0 +1,16 @@
+module github.com/yelhousni/batch-subgroup-membership
+
+go 1.23.5
+
+require (
+	github.com/consensys/gnark-crypto v0.17.1-0.20250602121451-21614bdb6b30
+	github.com/leanovate/gopter v0.2.11
+)
+
+require (
+	github.com/bits-and-blooms/bitset v1.20.0 // indirect
+	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582 // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
+)

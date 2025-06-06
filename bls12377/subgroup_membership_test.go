@@ -25,7 +25,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	// size of the multiExps
-	const nbSamples = 100
+	const nbSamples = 1000
 
 	properties.Property("[BLS12-377] IsInSubGroupBatchNaive test should pass", prop.ForAll(
 		func(mixer fr.Element) bool {
@@ -80,8 +80,8 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			_, _, g, _ := curve.Generators()
 			result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-			bound := big.NewInt(10177)
-			rounds := 5
+			bound := big.NewInt(2)
+			rounds := 64
 			return IsInSubGroupBatch(result, bound, rounds)
 		},
 		GenFr(),
@@ -105,8 +105,8 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			h := fuzzCofactorOfG1(a)
 			result[0].FromJacobian(&h)
 
-			bound := big.NewInt(10177)
-			rounds := 5
+			bound := big.NewInt(2)
+			rounds := 64
 			return !IsInSubGroupBatch(result, bound, rounds)
 		},
 		GenFr(),
@@ -124,7 +124,7 @@ func TestIsInSubGroupBatchProbabilistic(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	// size of the multiExps
-	const nbSamples = 100
+	const nbSamples = 1000
 
 	properties.Property("[BLS12-377] IsInSubGroupBatch should pass with probability 1/3^rounds although no point is in G1", prop.ForAll(
 		func(mixer fr.Element) bool {
@@ -140,8 +140,8 @@ func TestIsInSubGroupBatchProbabilistic(t *testing.T) {
 				result[i-1].Y.SetUint64(2)
 			}
 
-			bound := big.NewInt(10177)
-			rounds := 5
+			bound := big.NewInt(2)
+			rounds := 64
 			return !IsInSubGroupBatch(result, bound, rounds)
 		},
 		GenFr(),
@@ -205,7 +205,7 @@ func TestTatePairings(t *testing.T) {
 
 // benches
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -227,7 +227,7 @@ func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 }
 
 func BenchmarkIsInSubGroupBatch(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -240,12 +240,12 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 
 	_, _, g, _ := curve.Generators()
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
-	bound := big.NewInt(10177)
-	round := 5
+	bound := big.NewInt(2)
+	rounds := 64
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		IsInSubGroupBatch(result, bound, round)
+		IsInSubGroupBatch(result, bound, rounds)
 	}
 
 }

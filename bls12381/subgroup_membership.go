@@ -11,7 +11,10 @@ import (
 )
 
 // IsInSubGroupBatchNaive checks if a batch of points P_i are in G1.
-// This is a naive method that checks each point individually.
+// This is a naive method that checks each point individually using Scott test
+// [Scott21].
+//
+// [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 	for i := range points {
 		if !points[i].IsInSubGroup() {
@@ -22,8 +25,14 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 }
 
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
-// It generates random scalars s_i in the range [0, bound) and performs
-// n=rounds multi-scalar-multiplication ∑[s_i]P_i of sizes N=len(points)
+// First, it checks that all points are on a larger torsion E[r*e'] using Tate
+// pairings [Koshelev22].
+// Second, it generates random scalars s_i in the range [0, bound), performs
+// n=rounds multi-scalar-multiplication Sj=∑[s_i]P_i of sizes N=len(points) and
+// checks if Sj are on E[r] using Scott test [Scott21].
+//
+// [Koshelev22]: https://eprint.iacr.org/2022/037.pdf
+// [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
@@ -74,7 +83,7 @@ func isFirstTateOne(point curve.G1Affine) bool {
 func isSecondTateOne(point curve.G1Affine) bool {
 
 	// f_{11,P} = (l_{P,P}^4 * (l_{4P,P} * l_{2P,2P})^2 * l_{5P,5P} * v_P) /
-	// 			  (v_{2P} * (v_{5P} * v_{4P})^2 * v_{10P})
+	// 			  (v_{2P}^4 * (v_{5P} * v_{4P})^2 * v_{10P})
 
 	var num, denom, tate, f1, f2 fp.Element
 
@@ -90,22 +99,22 @@ func isSecondTateOne(point curve.G1Affine) bool {
 	f1.Mul(&point.X, &lines[3].a).Add(&f1, &point.Y).Add(&f1, &lines[3].b)
 	num.Mul(&num, &f1)
 	// v_P
-	f1.Add(&point.X, &verticals[0].a)
+	f1.Add(&point.X, &lines[4].b)
 	num.Mul(&num, &f1)
 
 	// v_{2P}^4
-	f1.Add(&point.X, &verticals[1].a)
+	f1.Add(&point.X, &lines[5].b)
 	denom.Square(&f1).Square(&denom)
 	// (v_{5P} * v_{4P})^2
-	f1.Add(&point.X, &verticals[2].a)
-	f2.Add(&point.X, &verticals[3].a)
+	f1.Add(&point.X, &lines[6].b)
+	f2.Add(&point.X, &lines[7].b)
 	f1.Mul(&f1, &f2).Square(&f1)
 	denom.Mul(&denom, &f1)
 	// v_{10P}
-	f1.Add(&point.X, &verticals[4].a)
+	f1.Add(&point.X, &lines[8].b)
 	denom.Mul(&denom, &f1)
 
-	// denom^{-1} = denom^{10} in (./p)_{11}
+	// denom^{-1} = denom^{10} inside the 11-th power residue symbol
 	f1.Square(&denom)
 	f2.Square(&f1).Square(&f2)
 	denom.Mul(&f1, &f2)
@@ -120,16 +129,28 @@ func isSecondTateOne(point curve.G1Affine) bool {
 }
 
 // --------------------
+
+// line represents a line in the form y + ax + b = 0.
+//
+// A a line through P=(x1,y1) and Q=(x2,y2) has:
+//
+//	a = (y1 - y2) / (x2 - x1)
+//	b = -y1 - a*x1
+//
+// A tangent line to P=(x1,y1) has:
+//
+//	a = -3*x1^2 / (2*y1)
+//	b = -y1 - a*x1
+//
+// A vertical line through P=(x1,y1) has::
+//
+// a = 0
+// b = -x1
 type line struct {
 	a, b fp.Element
 }
 
-type vertical struct {
-	a fp.Element
-}
-
-var lines [4]line
-var verticals [5]vertical
+var lines [9]line
 
 func init() {
 	// P = (
@@ -148,16 +169,16 @@ func init() {
 	// l_{5P,5P}
 	lines[3].a.SetString("1899248040746765214347655688391736275055198297344521124529117722142686150237741687305287681132657130556244969856414")
 	lines[3].b.SetString("2220821630890179640850044703399006017189993769556623826482523541536896844660108417748957554483159722637182947913708")
-	// v_{P}
-	verticals[0].a.SetString("1342728378592133176225836625560744379350333988650090061881201644643929491989325398013742949610187243243594448563993")
+	// v_P
+	lines[4].b.SetString("1342728378592133176225836625560744379350333988650090061881201644643929491989325398013742949610187243243594448563993")
 	// v_{2P}
-	verticals[1].a.SetString("3593196851125462192837623759409677287782506485357690247608362212285083916026308461561859647188864289044500677504754")
+	lines[5].b.SetString("3593196851125462192837623759409677287782506485357690247608362212285083916026308461561859647188864289044500677504754")
 	// v_{5P}
-	verticals[2].a.SetString("402067627672051250698017802728272265604843594840627748942542238023604973355831187895721091551929220859648553932084")
+	lines[6].b.SetString("402067627672051250698017802728272265604843594840627748942542238023604973355831187895721091551929220859648553932084")
 	// v_{4P}
-	verticals[3].a.SetString("2918694819079567036475700436273278909235182889931955058334034890737743469722865331326312274449648412759333253175181")
-	// v_{10P}
-	verticals[4].a.SetString("1342728378592133176225836625560744379350333988650090061881201644643929491989325398013742949610187243243594448563993")
+	lines[7].b.SetString("2918694819079567036475700436273278909235182889931955058334034890737743469722865331326312274449648412759333253175181")
+	// v_{10Pb
+	lines[8].b.SetString("1342728378592133176225836625560744379350333988650090061881201644643929491989325398013742949610187243243594448563993")
 }
 
 // expByp11 uses a short addition chain to compute x^p11 where p11=(p-1)/11 .

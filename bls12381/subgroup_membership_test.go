@@ -234,6 +234,7 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 // where w is a third root of unity.
 func phi(q *curve.G1Jac) *curve.G1Jac {
 	var p curve.G1Jac
+	p.Set(q)
 	var w fp.Element
 	w.SetString("4002409555221667392624310435006688643935503118305586438271171395842971157480381377015405980053539358417135540939436")
 	p.X.Mul(&p.X, &w)

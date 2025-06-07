@@ -1,6 +1,6 @@
 // Package bls12377new efficient elliptic curve, pairing and hash to curve implementation for bls12-377-new.
 //
-// bls12-377-new: A batch SMT-friendly G2- and Gt- new Barreto--Lynn--Scott curve with
+// bls12-377-new: A batch-SMT-friendly new Barreto--Lynn--Scott curve with
 //
 //	embedding degree k=12
 //	seed x₀=0x8000000000001163

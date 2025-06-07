@@ -1,1 +1,15 @@
-# batch-subgroup-membership
+# Batch subgroup membership testing
+
+Related code to the research paper "Batch subgroup membership testing on pairing-friendly curves".
+
+*Authors: [Dimitri Koshelev](https://github.com/Dimitri-Koshelev) and [Youssef El Housni](https://github.com/yelhousni).*
+
+## Pre-requisites
+Install Golang (https://go.dev/doc/install). This code was tested with the last 2 major releases of Go (currently 1.23 and 1.22).
+
+The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang library.
+
+## Organization
+- `bls12381/` contains the implemntation of the new method for the BLS12-381 curve.
+- `bls12377/` contains the implemntation of the new method for the BLS12-377 curve.
+- `sage/` contains SageMath scripts to validate formulas related to the Tate pairings.

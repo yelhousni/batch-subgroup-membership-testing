@@ -4,9 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-377"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 )
 
 // IsInSubGroupBatchNaive checks if a batch of points P_i are in G1.
@@ -33,16 +31,16 @@ func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool
 
 	// Check Sj are on E[r]
 	for i := 0; i < rounds; i++ {
-		b, err := rand.Int(rand.Reader, bound)
-		if err != nil {
-			panic(err)
-		}
-		randoms := make([]fr.Element, len(points))
-		for j := range randoms {
-			randoms[j].SetBigInt(b)
-		}
 		var sum curve.G1Jac
-		sum.MultiExp(points[:], randoms[:], ecc.MultiExpConfig{})
+		for j := range len(points) {
+			b, err := rand.Int(rand.Reader, bound)
+			if err != nil {
+				panic(err)
+			}
+			if b.Cmp(big.NewInt(0)) != 0 {
+				sum.AddMixed(&points[j])
+			}
+		}
 		if !sum.IsInSubGroup() {
 			return false
 		}

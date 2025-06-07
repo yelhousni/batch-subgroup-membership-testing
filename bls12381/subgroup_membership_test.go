@@ -183,7 +183,7 @@ func TestTatePairings(t *testing.T) {
 
 // benches
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -205,7 +205,7 @@ func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 }
 
 func BenchmarkIsInSubGroupBatch(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()

@@ -10,7 +10,7 @@ Install Golang (https://go.dev/doc/install). This code was tested with the last 
 The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang library.
 
 ## Organization
-- `bls12381/` contains the implemntation of the new method for the BLS12-381 curve.
-- `bls12377/` contains the implemntation of the new method for the BLS12-377 curve.
-- `bls12377-new/` contains the implemntation of a new BLS12-377 curve with optimal batch SMT.
+- `bls12381/` contains the implementation of the new method for the BLS12-381 curve.
+- `bls12377/` contains the implementation of the new method for the BLS12-377 curve.
+- `bls12377-new/` contains the implementation of a new BLS12-377 curve with optimal batch SMT.
 - `sage/` contains SageMath scripts to validate formulas related to the Tate pairings.

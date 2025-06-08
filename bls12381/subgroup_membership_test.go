@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -160,7 +161,8 @@ func TestTatePairings(t *testing.T) {
 
 // benches
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000000
+
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -174,15 +176,19 @@ func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 	_, _, g, _ := curve.Generators()
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		IsInSubGroupBatchNaive(result)
+	for _, i := range []uint64{10, 100, 1000, 10000, 100000, 1000000} {
+		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
+			b.ResetTimer()
+			for j := 0; j < b.N; j++ {
+				IsInSubGroupBatchNaive(result[:i])
+			}
+		})
 	}
-
 }
 
 func BenchmarkIsInSubGroupBatch(b *testing.B) {
-	const nbSamples = 100
+	const nbSamples = 1000000
+
 	// mixer ensures that all the words of a frElement are set
 	var mixer fr.Element
 	mixer.SetRandom()
@@ -196,11 +202,14 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 	_, _, g, _ := curve.Generators()
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		IsInSubGroupBatch(result, bound, rounds)
+	for _, i := range []uint64{10, 100, 1000, 10000, 100000, 1000000} {
+		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
+			b.ResetTimer()
+			for j := 0; j < b.N; j++ {
+				IsInSubGroupBatch(result[:i], bound, rounds)
+			}
+		})
 	}
-
 }
 
 // utils

@@ -21,8 +21,12 @@
 go.work
 go.work.sum
 
+# profiler
+*.prof
+
 # env file
 .env
 
 # sage
 *.sage.py
+*.log

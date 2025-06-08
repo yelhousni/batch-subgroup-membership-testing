@@ -18,7 +18,7 @@ The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang l
 ## Benchmarks
 On a Macbook Air M1
 
-#### BLS12-381
+#### BLS12-381 (ℙ $\leq 2^{-64}$)
 | Number of Points | Naive Method (ms) | This Work (ms) | Speedup |
 |------------------|-------------------|----------------|---------|
 | 10^2             | 5.055             | 3.955          | 1.277   |
@@ -27,7 +27,7 @@ On a Macbook Air M1
 | 10^5             | 5976.587          | 3971.242       | 1.505   |
 | 10^6             | 50363.157         | 31377.842      | 1.605   |
 
-#### BLS12-377
+#### BLS12-377 (ℙ $\leq 2^{-64}$)
 | Number of Points | Naive Method (ms) | This Work (ms) | Speedup |
 |------------------|-------------------|----------------|---------|
 | 10^2             | 5.092             | 5.808          | 0.877   |

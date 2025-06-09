@@ -3,10 +3,12 @@ package bls12377strong
 import (
 	"crypto/rand"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/yelhousni/batch-subgroup-membership/bls12377-strong/fp"
 	"github.com/yelhousni/batch-subgroup-membership/bls12377-strong/fr"
+	"github.com/yelhousni/batch-subgroup-membership/parallel"
 )
 
 // IsInSubGroupBatchNaive checks if a batch of points P_i are in G1.
@@ -15,12 +17,16 @@ import (
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []G1Affine) bool {
-	for i := range points {
-		if !points[i].IsInSubGroup() {
-			return false
+	var nbErrors int64
+	parallel.Execute(len(points), func(start, end int) {
+		for i := start; i < end; i++ {
+			if !points[i].IsInSubGroup() {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
 		}
-	}
-	return true
+	})
+	return nbErrors == 0
 }
 
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
@@ -35,15 +41,23 @@ func IsInSubGroupBatchNaive(points []G1Affine) bool {
 func IsInSubGroupBatch(points []G1Affine, bound *big.Int, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
-	for i := range points {
-		// 1.1. Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1, with P3 = (-1,0).
-		if !isFirstTateOne(points[i]) {
-			return false
+	var nbErrors int64
+	parallel.Execute(len(points), func(start, end int) {
+		for i := start; i < end; i++ {
+			// 1.1. Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1, with P3 = (-1,0).
+			if !isFirstTateOne(points[i]) {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
+			// 1.2. Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1, with P3 = (0,1).
+			if !isSecondTateOne(points[i]) {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
 		}
-		// 1.2. Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1, with P3 = (0,1).
-		if !isSecondTateOne(points[i]) {
-			return false
-		}
+	})
+	if nbErrors > 0 {
+		return false
 	}
 
 	// 2. Check Sj are on E[r]

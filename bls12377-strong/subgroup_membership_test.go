@@ -12,13 +12,12 @@ import (
 	"github.com/leanovate/gopter/prop"
 )
 
-// Let h be the cofactor of (E/𝔽p) and let e=3√(h/3).
-// bound=10177 is the smallest prime divisor of e'=e/gcd(π,e)
-// where π= 2⁴·3²·5·7·11·13.
-// For a failure probability of 2⁻ᵝ we need to set rounds=⌈β/log2(bound)⌉.
-// For example β=64 gives rounds=5 and β=128 gives rounds=10.
-var bound = big.NewInt(10177)
-var rounds = 5
+// Let h be the cofactor of (E/𝔽p).
+// h = 3 * (2 * 1553806976791259819)²
+// For a failure probability of 2⁻ᵝ we need to set rounds=⌈β⌉.
+// For example β=64 gives rounds=5 and β=128 gives rounds=2.
+var bound = big.NewInt(1553806976791259819)
+var rounds = 1
 
 func TestIsInSubGroupBatch(t *testing.T) {
 	t.Parallel()
@@ -34,7 +33,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 	// number of points to test
 	const nbSamples = 100
 
-	properties.Property("[BLS12-381] IsInSubGroupBatchNaive test should pass", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] IsInSubGroupBatchNaive test should pass", prop.ForAll(
 		func(mixer fr.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -52,7 +51,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-381] IsInSubGroupBatchNaive test should not pass", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] IsInSubGroupBatchNaive test should not pass", prop.ForAll(
 		func(mixer fr.Element, a fp.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -77,7 +76,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFp(),
 	))
 
-	properties.Property("[BLS12-381] IsInSubGroupBatch test should pass with probability 1-1/2^64", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] IsInSubGroupBatch test should pass with probability 1-1/2^64", prop.ForAll(
 		func(mixer fr.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -96,7 +95,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-381] IsInSubGroupBatch test should not pass", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] IsInSubGroupBatch test should not pass", prop.ForAll(
 		func(mixer fr.Element, a fp.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -132,7 +131,7 @@ func TestTatePairings(t *testing.T) {
 
 	properties := gopter.NewProperties(parameters)
 
-	properties.Property("[BLS12-381] Tate(P3,Q) should be 1", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] Tate(P3,Q) should be 1", prop.ForAll(
 		func(a fr.Element) bool {
 			var s big.Int
 			a.BigInt(&s)
@@ -143,7 +142,7 @@ func TestTatePairings(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-381] Tate(P11,Q) should be 1", prop.ForAll(
+	properties.Property("[BLS12-377-STRONG] Tate(P11,Q) should be 1", prop.ForAll(
 		func(a fr.Element) bool {
 			var s big.Int
 			a.BigInt(&s)

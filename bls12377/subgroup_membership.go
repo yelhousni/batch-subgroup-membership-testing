@@ -46,13 +46,13 @@ func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool
 
 	var nbErrors int64
 	parallel.Execute(rounds, func(start, end int) {
-		var sum curve.G1Jac
 
 		const windowSize = 64
 		var br [windowSize / 8]byte
 
 		// Check Sj are on E[r]
 		for i := start; i < end; i++ {
+			var sum curve.G1Jac
 			for j := range len(points) {
 				pos := j % windowSize
 				if pos == 0 {
@@ -67,9 +67,9 @@ func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool
 					sum.AddMixed(&points[j])
 				}
 			}
-		}
-		if !sum.IsInSubGroup() {
-			atomic.AddInt64(&nbErrors, 1)
+			if !sum.IsInSubGroup() {
+				atomic.AddInt64(&nbErrors, 1)
+			}
 		}
 	})
 

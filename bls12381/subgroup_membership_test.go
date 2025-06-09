@@ -160,6 +160,48 @@ func TestTatePairings(t *testing.T) {
 }
 
 // benches
+func BenchmarkIsInSubGroupBatchNaiveShort(b *testing.B) {
+	const nbSamples = 100
+
+	// mixer ensures that all the words of a frElement are set
+	var mixer fr.Element
+	mixer.SetRandom()
+	var sampleScalars [nbSamples]fr.Element
+
+	for i := 1; i <= nbSamples; i++ {
+		sampleScalars[i-1].SetUint64(uint64(i)).
+			Mul(&sampleScalars[i-1], &mixer)
+	}
+
+	_, _, g, _ := curve.Generators()
+	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		IsInSubGroupBatchNaive(result[:])
+	}
+}
+
+func BenchmarkIsInSubGroupBatchShort(b *testing.B) {
+	const nbSamples = 100
+
+	// mixer ensures that all the words of a frElement are set
+	var mixer fr.Element
+	mixer.SetRandom()
+	var sampleScalars [nbSamples]fr.Element
+
+	for i := 1; i <= nbSamples; i++ {
+		sampleScalars[i-1].SetUint64(uint64(i)).
+			Mul(&sampleScalars[i-1], &mixer)
+	}
+
+	_, _, g, _ := curve.Generators()
+	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		IsInSubGroupBatch(result[:], bound, rounds)
+	}
+}
+
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 	const nbSamples = 1000000
 

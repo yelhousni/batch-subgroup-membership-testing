@@ -3,11 +3,13 @@ package bls12381
 import (
 	"crypto/rand"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/yelhousni/batch-subgroup-membership/parallel"
 )
 
 // IsInSubGroupBatchNaive checks if a batch of points P_i are in G1.
@@ -16,12 +18,16 @@ import (
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
-	for i := range points {
-		if !points[i].IsInSubGroup() {
-			return false
+	var nbErrors int64
+	parallel.Execute(len(points), func(start, end int) {
+		for i := start; i < end; i++ {
+			if !points[i].IsInSubGroup() {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
 		}
-	}
-	return true
+	})
+	return nbErrors == 0
 }
 
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
@@ -36,34 +42,46 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
-	for i := range points {
-		// 1.1. Tate_{3,P3}(Q) = (y-2)^((p-1)/3) == 1, with P3 = (0,2).
-		if !isFirstTateOne(points[i]) {
-			return false
+	var nbErrors int64
+	parallel.Execute(len(points), func(start, end int) {
+		for i := start; i < end; i++ {
+			// 1.1. Tate_{3,P3}(Q) = (y-2)^((p-1)/3) == 1, with P3 = (0,2).
+			if !isFirstTateOne(points[i]) {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
+			// 1.2. Tate_{11,P11}(Q) == 1
+			if !isSecondTateOne(points[i]) {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
 		}
-		// 1.2. Tate_{11,P11}(Q) == 1
-		if !isSecondTateOne(points[i]) {
-			return false
-		}
+	})
+	if nbErrors > 0 {
+		return false
 	}
 
 	// 2. Check Sj are on E[r]
-	for i := 0; i < rounds; i++ {
-		randoms := make([]fr.Element, len(points))
-		for j := range randoms {
-			b, err := rand.Int(rand.Reader, bound)
-			if err != nil {
-				panic(err)
+	randoms := make([]fr.Element, len(points))
+	parallel.Execute(rounds, func(start, end int) {
+		for i := start; i < end; i++ {
+			for j := range randoms {
+				b, err := rand.Int(rand.Reader, bound)
+				if err != nil {
+					panic(err)
+				}
+				randoms[j].SetBigInt(b)
 			}
-			randoms[j].SetBigInt(b)
+			var sum curve.G1Jac
+			sum.MultiExp(points[:], randoms[:], ecc.MultiExpConfig{})
+			if !sum.IsInSubGroup() {
+				atomic.AddInt64(&nbErrors, 1)
+				return
+			}
 		}
-		var sum curve.G1Jac
-		sum.MultiExp(points[:], randoms[:], ecc.MultiExpConfig{})
-		if !sum.IsInSubGroup() {
-			return false
-		}
-	}
-	return true
+	})
+
+	return nbErrors == 0
 }
 
 // isFirstTateOne checks that Tate_{3,P3}(Q) = (y-2)^((p-1)/3) == 1

@@ -215,7 +215,7 @@ func (p *g1JacExtended) doubleMixed(a *curve.G1Affine) *g1JacExtended {
 type bucketg1JacExtendedC6 [32]g1JacExtended
 
 func _msmCheck(points []curve.G1Affine) bool {
-	const nbBitsBounds = 13
+	// const nbBitsBounds = 13
 	const c = 6
 	const nbChunks = 3 //(nbBitsBounds + c - 1) / c
 
@@ -233,8 +233,7 @@ func _msmCheck(points []curve.G1Affine) bool {
 		go processChunkG1Simplified[bucketg1JacExtendedC6](uint64(j), chChunks[j], c, points)
 	}
 
-	var p curve.G1Jac
-	msmReduceChunkG1Affine(&p, int(c), chChunks[:])
+	p := msmReduceChunkG1Affine(int(c), chChunks[:])
 
 	return p.IsInSubGroup()
 }
@@ -288,7 +287,7 @@ func processChunkG1Simplified[B bucketg1JacExtendedC6](chunk uint64,
 }
 
 // msmReduceChunkG1Affine reduces the weighted sum of the buckets into the result of the multiExp
-func msmReduceChunkG1Affine(p *curve.G1Jac, c int, chChunks []chan g1JacExtended) *curve.G1Jac {
+func msmReduceChunkG1Affine(c int, chChunks []chan g1JacExtended) *curve.G1Jac {
 	var _p g1JacExtended
 	totalj := <-chChunks[len(chChunks)-1]
 	_p.Set(&totalj)
@@ -300,6 +299,5 @@ func msmReduceChunkG1Affine(p *curve.G1Jac, c int, chChunks []chan g1JacExtended
 		_p.add(&totalj)
 	}
 
-	p = unsafeFromJacExtended(&_p)
-	return p
+	return unsafeFromJacExtended(&_p)
 }

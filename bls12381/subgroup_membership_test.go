@@ -93,7 +93,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			_, _, g, _ := curve.Generators()
 			result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-			return IsInSubGroupBatch(result, bound, rounds)
+			return IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 	))
@@ -118,7 +118,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			h = fuzzCofactorOfG1(a)
 			result[nbSamples-1].FromJacobian(&h)
 
-			return !IsInSubGroupBatch(result, bound, rounds)
+			return !IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 		GenFp(),
@@ -198,7 +198,7 @@ func BenchmarkIsInSubGroupBatchShort(b *testing.B) {
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 	b.ResetTimer()
 	for j := 0; j < b.N; j++ {
-		IsInSubGroupBatch(result[:], bound, rounds)
+		IsInSubGroupBatch(result[:], rounds)
 	}
 }
 
@@ -248,7 +248,7 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
-				IsInSubGroupBatch(result[:i], bound, rounds)
+				IsInSubGroupBatch(result[:i], rounds)
 			}
 		})
 	}

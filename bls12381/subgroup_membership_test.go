@@ -15,11 +15,10 @@ import (
 )
 
 // Let h be the cofactor of (E/𝔽p) and let e=3√(h/3).
-// bound=10177 is the smallest prime divisor of e'=e/gcd(π,e)
-// where π= 2⁴·3²·5·7·11·13.
+// bound < 10177 = the smallest prime divisor of e'=e/gcd(π,e)
+// where π= 2⁴·3²·5·7·11·13. We choose bound = 2^13 = 8192.
 // For a failure probability of 2⁻ᵝ we need to set rounds=⌈β/log2(bound)⌉.
 // For example β=64 gives rounds=5 and β=128 gives rounds=10.
-var bound = big.NewInt(10177)
 var rounds = 5
 
 func TestIsInSubGroupBatch(t *testing.T) {

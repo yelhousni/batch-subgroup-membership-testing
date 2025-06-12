@@ -2,7 +2,6 @@ package bls12377
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
 
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-377"
@@ -17,7 +16,6 @@ import (
 // For highly 2-adic curves the bound is always 2.
 // For a failure probability of 2⁻ᵝ we need to set rounds=β.
 // For example β=64 gives rounds=64 and β=128 gives rounds=128.
-var bound = big.NewInt(2)
 var rounds = 64
 
 func TestIsInSubGroupBatch(t *testing.T) {
@@ -92,7 +90,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			_, _, g, _ := curve.Generators()
 			result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-			return IsInSubGroupBatch(result, bound, rounds)
+			return IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 	))
@@ -116,7 +114,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			h = fuzzCofactorOfG1(a)
 			result[nbSamples-1].FromJacobian(&h)
 
-			return !IsInSubGroupBatch(result, bound, rounds)
+			return !IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 		GenFp(),
@@ -164,7 +162,7 @@ func BenchmarkIsInSubGroupBatchShort(b *testing.B) {
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 	b.ResetTimer()
 	for j := 0; j < b.N; j++ {
-		IsInSubGroupBatch(result[:], bound, rounds)
+		IsInSubGroupBatch(result[:], rounds)
 	}
 }
 
@@ -214,7 +212,7 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
-				IsInSubGroupBatch(result[:i], bound, rounds)
+				IsInSubGroupBatch(result[:i], rounds)
 			}
 		})
 	}

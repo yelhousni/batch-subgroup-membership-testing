@@ -2,7 +2,6 @@ package bls12377
 
 import (
 	"crypto/rand"
-	"math/big"
 	"sync/atomic"
 
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-377"
@@ -28,22 +27,12 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 }
 
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
-// It generates random scalars s_i in the range [0, bound), performs
+// It generates random scalars s_i in the range {0,1} performs
 // n=rounds multi-scalar-multiplication Sj=∑[s_i]P_i of sizes N=len(points) and
 // checks if Sj are on E[r] using Scott test [Scott21].
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
-func IsInSubGroupBatch(points []curve.G1Affine, bound *big.Int, rounds int) bool {
-	// ensure bound is 2 for now.
-	if !bound.IsUint64() && bound.Uint64() != 2 {
-		panic("IsInSubGroupBatch only supports bound=2 for now")
-	}
-	// ensure rounds == 64
-	const nbRounds = 64
-	if rounds != nbRounds {
-		panic("IsInSubGroupBatch only supports rounds=64 for now")
-	}
-
+func IsInSubGroupBatch(points []curve.G1Affine, rounds int) bool {
 	var nbErrors int64
 	parallel.Execute(rounds, func(start, end int) {
 

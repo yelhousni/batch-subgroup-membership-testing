@@ -2,12 +2,10 @@ package bls12377strong
 
 import (
 	"crypto/rand"
-	"math/big"
 	"sync/atomic"
+	"unsafe"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/yelhousni/batch-subgroup-membership/bls12377-strong/fp"
-	"github.com/yelhousni/batch-subgroup-membership/bls12377-strong/fr"
 	"github.com/yelhousni/batch-subgroup-membership/parallel"
 )
 
@@ -32,13 +30,13 @@ func IsInSubGroupBatchNaive(points []G1Affine) bool {
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
 // First, it checks that all points are on a larger torsion E[r*e'] using Tate
 // pairings [Koshelev22].
-// Second, it generates random scalars s_i in the range [0, bound), performs
+// Second, it generates random scalars s_i in the range [0, 2^60[, performs
 // n=rounds multi-scalar-multiplication Sj=∑[s_i]P_i of sizes N=len(points) and
 // checks if Sj are on E[r] using Scott test [Scott21].
 //
 // [Koshelev22]: https://eprint.iacr.org/2022/037.pdf
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
-func IsInSubGroupBatch(points []G1Affine, bound *big.Int, rounds int) bool {
+func IsInSubGroupBatch(points []G1Affine, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
 	var nbErrors int64
@@ -61,24 +59,13 @@ func IsInSubGroupBatch(points []G1Affine, bound *big.Int, rounds int) bool {
 	}
 
 	// 2. Check Sj are on E[r]
-	for i := 0; i < rounds; i++ {
-		randoms := make([]fr.Element, len(points))
-		for j := range randoms {
-			b, err := rand.Int(rand.Reader, bound)
-			if err != nil {
-				panic(err)
-			}
-			randoms[j].SetBigInt(b)
-		}
-		var sum G1Jac
-		sum.MultiExp(points[:], randoms[:], ecc.MultiExpConfig{})
-		if !sum.IsInSubGroup() {
-			return false
-		}
+	if !_msmCheck(points) {
+		return false
 	}
 	return true
 }
 
+// ---- Tate pairings ----
 // isFirstTateOne checks that Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1
 // where P2 = (-1,0) a point of order 2 on the curve
 func isFirstTateOne(point G1Affine) bool {
@@ -693,4 +680,78 @@ func expByp3(x *fp.Element) *fp.Element {
 	z.Square(z)
 
 	return z
+}
+
+// ---- MSM ----
+func _msmCheck(points []G1Affine) bool {
+	const nbBitsBounds = 61
+	const c = 6
+	const nbChunks = 11 //(nbBitsBounds + c - 1) / c
+
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack and this is critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
+	chChunks := make([]chan g1JacExtended, nbChunks)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
+	for j := int(nbChunks - 1); j >= 0; j-- {
+		go processChunkG1Simplified[bucketg1JacExtendedC6](uint64(j), chChunks[j], c, points)
+	}
+
+	var p G1Jac
+	msmReduceChunkG1Affine(&p, int(c), chChunks[:])
+
+	return p.IsInSubGroup()
+}
+
+func processChunkG1Simplified[B bucketg1JacExtendedC6](chunk uint64,
+	chRes chan<- g1JacExtended,
+	c uint64,
+	points []G1Affine) {
+
+	const windowSize = 1024
+	var br [windowSize * 2]byte
+
+	// interpret br as an array of uint16 of size windowSize/2
+	randomScalars := (*[windowSize]uint16)(unsafe.Pointer(&br[0]))
+
+	// we need a mask to get only the (c-1) lowest bits of each scalar
+	mask := uint16((1 << (c - 1)) - 1)
+
+	var buckets B
+	for i := 0; i < len(buckets); i++ {
+		buckets[i].SetInfinity()
+	}
+
+	// for each scalars, get the digit corresponding to the chunk we're processing.
+	for i := range points {
+		if i%windowSize == 0 {
+			// fill the lowest c bits of each scalar with random bytes
+			rand.Read(br[:]) // does not return an error, always fills br
+		}
+		digit := randomScalars[i%windowSize] & mask
+		if digit == 0 {
+			continue
+		}
+		buckets[digit-1].addMixed(&points[i])
+	}
+
+	// reduce buckets into total
+	// total =  bucket[0] + 2*bucket[1] + 3*bucket[2] ... + n*bucket[n-1]
+
+	var runningSum, total g1JacExtended
+	runningSum.SetInfinity()
+	total.SetInfinity()
+	for k := len(buckets) - 1; k >= 0; k-- {
+		if !buckets[k].IsInfinity() {
+			runningSum.add(&buckets[k])
+		}
+		total.add(&runningSum)
+	}
+
+	chRes <- total
 }

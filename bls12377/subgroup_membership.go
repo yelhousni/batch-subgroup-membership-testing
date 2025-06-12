@@ -27,7 +27,7 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 }
 
 // IsInSubGroupBatch checks if a batch of points P_i are in G1.
-// It generates random scalars s_i in the range {0,1} performs
+// It generates random scalars s_i in the range [0, bound), performs
 // n=rounds multi-scalar-multiplication Sj=∑[s_i]P_i of sizes N=len(points) and
 // checks if Sj are on E[r] using Scott test [Scott21].
 //
@@ -41,7 +41,7 @@ func IsInSubGroupBatch(points []curve.G1Affine, rounds int) bool {
 
 		// Check Sj are on E[r]
 		for i := start; i < end; i++ {
-			var sum curve.G1Jac
+			var sum g1JacExtended
 			for j := range len(points) {
 				pos := j % windowSize
 				if pos == 0 {
@@ -53,13 +53,17 @@ func IsInSubGroupBatch(points []curve.G1Affine, rounds int) bool {
 				// check if the bit is set
 				if br[pos/8]&(1<<(pos%8)) != 0 {
 					// add the point to the sum
-					sum.AddMixed(&points[j])
+					sum.addMixed(&points[j])
 				}
 			}
-			if !sum.IsInSubGroup() {
+
+			p := *fromJacExtended(&sum)
+			if !p.IsInSubGroup() {
 				atomic.AddInt64(&nbErrors, 1)
+				return
 			}
 		}
+
 	})
 
 	return nbErrors == 0

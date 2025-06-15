@@ -11,10 +11,9 @@ import (
 // isFirstTateOne checks that Tate_{3,P3}(Q) = (y-2)^((p-1)/3) == 1
 // where P3 = (0,2) a point of order 3 on the
 func isFirstTateOne(point curve.G1Affine) bool {
-	var tate, two fp.Element
-	two.SetInt64(2)
-	tate.Sub(&point.Y, &two)
-	return CubicSymbol(tate).Cmp(new(big.Int).SetInt64(1)) == 0
+	var tate fp.Element
+	tate.Sub(&point.Y, &twop)
+	return IsCubicResidue(tate)
 }
 
 // isSecondTateOne checks that Tate_{11,P11}(Q) == 1
@@ -85,6 +84,10 @@ type line struct {
 
 var lines [7]line
 
+var a, b big.Int
+var beta eisenstein.ComplexNumber
+var twop fp.Element
+
 func init() {
 	// P = (
 	// 	   0x1147c19050b3c4b663a4ca29c4859eeb1ac05a91659009602e7443347ad659e9f838f4ed07337c4c6d3a48d612b4bb92,
@@ -108,6 +111,15 @@ func init() {
 	lines[5].b.SetString("402067627672051250698017802728272265604843594840627748942542238023604973355831187895721091551929220859648553932084")
 	// v_{4P}
 	lines[6].b.SetString("2918694819079567036475700436273278909235182889931955058334034890737743469722865331326312274449648412759333253175181")
+
+	// beta = a+ω*b with b primary and norm(beta)=p
+	a.SetString("-1155048275357884106335086113613464118783412807316232579754", 10)
+	b.SetString("1155048275357884106335086113613464118768280431093290937003", 10)
+	beta.A0 = &a
+	beta.A1 = &b
+
+	// 2
+	twop.SetInt64(2)
 }
 
 // expByp11 uses a short addition chain to compute x^p11 where p11=(p-1)/11 .
@@ -598,91 +610,88 @@ func expByp11(x fp.Element) fp.Element {
 	return z
 }
 
-func CubicSymbol(x fp.Element) *big.Int {
-	var a, b, _x big.Int
-	// beta = a+ω*b with b primary and norm(beta)=p
-	a.SetString("-1155048275357884106335086113613464118783412807316232579754", 10)
-	b.SetString("1155048275357884106335086113613464118768280431093290937003", 10)
-	beta := eisenstein.ComplexNumber{A0: &a, A1: &b}
-	// alpha = x+ω*0
-	alpha := eisenstein.ComplexNumber{A0: x.BigInt(&_x), A1: big.NewInt(0)}
-	return cubicSymbol(&alpha, &beta).A0
+var (
+	mone  = big.NewInt(-1)
+	zero  = big.NewInt(0)
+	one   = big.NewInt(1)
+	two   = big.NewInt(2)
+	three = big.NewInt(3)
+	six   = big.NewInt(6)
+	nine  = big.NewInt(9)
+)
+
+func IsCubicResidue(x fp.Element) bool {
+	return CubicSymbol(x).A0.Cmp(one) == 0
 }
 
-func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
-	var zero, one, mone, quo, rem, gamma eisenstein.ComplexNumber
-	zero.SetZero()
-	one.SetOne()
-	mone.Neg(&one)
-	if alpha.Equal(&one) || alpha.Equal(&mone) || beta.Equal(&one) || beta.Equal(&mone) {
-		return &one
+func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
+	// alpha = x+ω*0
+	var _x big.Int
+	alpha := eisenstein.ComplexNumber{A0: x.BigInt(&_x), A1: zero}
+	var quo eisenstein.ComplexNumber
+	return cubicSymbol(&alpha, &beta, &quo)
+}
+
+func cubicSymbol(alpha, beta, quo *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
+	var gamma, rem eisenstein.ComplexNumber
+	if (alpha.A1.Sign() == 0 && alpha.A0.Cmp(one) == 0) || (alpha.A1.Sign() == 0 && alpha.A0.Cmp(mone) == 0) || (beta.A1.Sign() == 0 && beta.A0.Cmp(one) == 0) || (beta.A1.Sign() == 0 && beta.A0.Cmp(mone) == 0) {
+		return &eisenstein.ComplexNumber{A0: one, A1: zero}
 	}
 	quo.QuoRem(alpha, beta, &rem)
-	gamma.Mul(&quo, beta)
+	gamma.Mul(quo, beta)
 	gamma.Sub(alpha, &gamma)
-	e := gamma.A0
-	f := gamma.A1
-	if gamma.Equal(&zero) {
-		return &zero
+	if gamma.A0.Sign() == 0 && gamma.A1.Sign() == 0 {
+		return &eisenstein.ComplexNumber{A0: zero, A1: zero}
 	}
-	var e_, f_ big.Int
-	var two, three big.Int
-	two.SetUint64(2)
-	three.SetUint64(3)
-	e_.Mul(e, &two).Sub(&e_, f)
-	f_.Add(e, f)
+	quo.A0.Mul(gamma.A0, two).Sub(quo.A0, gamma.A1)
+	quo.A1.Add(gamma.A0, gamma.A1)
 	m := 0
-	var rem1, rem2 big.Int
-	e_.QuoRem(&e_, &three, &rem1)
-	f_.QuoRem(&f_, &three, &rem1)
-	for rem1.Cmp(zero.A0) == 0 && rem2.Cmp(zero.A0) == 0 {
+	quo.A0.QuoRem(quo.A0, three, rem.A0)
+	quo.A1.QuoRem(quo.A1, three, rem.A1)
+	for rem.A0.Sign() == 0 && rem.A1.Sign() == 0 {
 		m += 1
-		e.Set(&e_)
-		f.Set(&f_)
-		e_.Mul(e, &two).Sub(&e_, f)
-		f_.Add(e, f)
-		e_.QuoRem(&e_, &three, &rem1)
-		f_.QuoRem(&f_, &three, &rem1)
+		gamma.A0.Set(quo.A0)
+		gamma.A1.Set(quo.A1)
+		quo.A0.Mul(gamma.A0, two).Sub(quo.A0, gamma.A1)
+		quo.A1.Add(gamma.A0, gamma.A1)
+		quo.A0.QuoRem(quo.A0, three, rem.A0)
+		quo.A1.QuoRem(quo.A1, three, rem.A1)
 	}
-	gamma = eisenstein.ComplexNumber{A0: e, A1: f}
 	n := 0
-	e_.Neg(e)
-	f_.Sub(e, f)
-	rem1.Mod(&e_, &three)
-	rem2.Mod(&f_, &three)
-	if rem1.Cmp(zero.A0) == 0 {
+	quo.A0.Neg(gamma.A0)
+	quo.A1.Sub(gamma.A0, gamma.A1)
+	rem.A0.Mod(quo.A0, three)
+	rem.A1.Mod(quo.A1, three)
+	if rem.A0.Sign() == 0 {
 		n = 1
-		gamma.A0.Neg(&f_)
-		gamma.A1.Set(&e_)
-	} else if rem2.Cmp(zero.A0) == 0 {
+		gamma.A0.Neg(quo.A1)
+		gamma.A1.Set(quo.A0)
+	} else if rem.A1.Sign() == 0 {
 		n = 2
-		gamma.A0.Neg(f)
-		gamma.A1.Set(&f_)
+		gamma.A0.Neg(gamma.A1)
+		gamma.A1.Set(quo.A1)
 	}
-	var exp, c2, tmp big.Int
 	// (-m * (c^2-1) + n * (c^2-c*d-1))%9 / 3
-	c2.Mul(beta.A0, beta.A0)
-	exp.Sub(&c2, one.A0).
-		Mul(&exp, new(big.Int).SetInt64(int64(m)))
-	tmp.Mul(beta.A0, beta.A1).
-		Add(&tmp, one.A0)
-	tmp.Sub(&c2, &tmp).
-		Mul(&tmp, new(big.Int).SetInt64(int64(n)))
-	exp.Sub(&tmp, &exp).
-		Mod(&exp, new(big.Int).SetInt64(9))
-	var j eisenstein.ComplexNumber
-	j.SetZero()
-	if exp.Cmp(new(big.Int).SetInt64(6)) == 0 {
-		j.A0.SetUint64(1)
-		j.A1.SetUint64(1)
-		j.Neg(&j)
-	} else if exp.Cmp(new(big.Int).SetInt64(3)) == 0 {
-		j.A1.SetUint64(1)
-	} else if exp.Sign() == 0 {
-		j.A0.SetUint64(1)
+	quo.A1.Mul(beta.A0, beta.A0)
+	quo.A0.Sub(quo.A1, one).
+		Mul(quo.A0, new(big.Int).SetInt64(int64(m)))
+	rem.A0.Mul(beta.A0, beta.A1).
+		Add(rem.A0, one)
+	rem.A0.Sub(quo.A1, rem.A0).
+		Mul(rem.A0, new(big.Int).SetInt64(int64(n)))
+	quo.A0.Sub(rem.A0, quo.A0).
+		Mod(quo.A0, nine)
+	rem.SetZero()
+	if quo.A0.Cmp(six) == 0 {
+		rem.A0.Set(mone)
+		rem.A1.Set(mone)
+	} else if quo.A0.Cmp(three) == 0 {
+		rem.A1.Set(one)
+	} else if quo.A0.Sign() == 0 {
+		rem.A0.Set(one)
 	} else {
 		panic("unexpected value")
 	}
 
-	return j.Mul(&j, cubicSymbol(beta, &gamma))
+	return rem.Mul(&rem, cubicSymbol(beta, &gamma, quo))
 }

@@ -159,6 +159,18 @@ func TestTatePairings(t *testing.T) {
 }
 
 // benches
+func BenchmarkFirstTate(b *testing.B) {
+	var m fr.Element
+	m.SetRandom()
+	var _m big.Int
+	_, _, g, _ := curve.Generators()
+	g.ScalarMultiplication(&g, m.BigInt(&_m))
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		isFirstTateOne(g)
+	}
+}
+
 func BenchmarkIsInSubGroupBatchNaiveShort(b *testing.B) {
 	const nbSamples = 100
 

@@ -12,7 +12,7 @@ import (
 // where P3 = (0,2) a point of order 3 on the
 func isFirstTateOne(point curve.G1Affine) bool {
 	var tate fp.Element
-	tate.Sub(&point.Y, &twop)
+	tate.Sub(&point.Y, &two_p)
 	return IsCubicResidue(tate)
 }
 
@@ -86,7 +86,7 @@ var lines [7]line
 
 var a, b big.Int
 var beta eisenstein.ComplexNumber
-var twop fp.Element
+var two_p fp.Element
 
 func init() {
 	// P = (
@@ -119,7 +119,7 @@ func init() {
 	beta.A1 = &b
 
 	// 2
-	twop.SetInt64(2)
+	two_p.SetInt64(2)
 }
 
 // expByp11 uses a short addition chain to compute x^p11 where p11=(p-1)/11 .
@@ -620,6 +620,8 @@ var (
 	nine  = big.NewInt(9)
 )
 
+var mInt, nInt big.Int
+
 func IsCubicResidue(x fp.Element) bool {
 	return CubicSymbol(x).A0.Cmp(one) == 0
 }
@@ -628,18 +630,17 @@ func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
 	// alpha = x+ω*0
 	var _x big.Int
 	alpha := eisenstein.ComplexNumber{A0: x.BigInt(&_x), A1: zero}
-	var quo eisenstein.ComplexNumber
-	return cubicSymbol(&alpha, &beta, &quo)
+	var quo, rem, gamma eisenstein.ComplexNumber
+	return cubicSymbol(&alpha, &beta, &quo, &rem, &gamma)
 }
 
-func cubicSymbol(alpha, beta, quo *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
-	var gamma, rem eisenstein.ComplexNumber
+func cubicSymbol(alpha, beta, quo, rem, gamma *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
 	if (alpha.A1.Sign() == 0 && alpha.A0.Cmp(one) == 0) || (alpha.A1.Sign() == 0 && alpha.A0.Cmp(mone) == 0) || (beta.A1.Sign() == 0 && beta.A0.Cmp(one) == 0) || (beta.A1.Sign() == 0 && beta.A0.Cmp(mone) == 0) {
 		return &eisenstein.ComplexNumber{A0: one, A1: zero}
 	}
-	quo.QuoRem(alpha, beta, &rem)
+	quo.QuoRem(alpha, beta, rem)
 	gamma.Mul(quo, beta)
-	gamma.Sub(alpha, &gamma)
+	gamma.Sub(alpha, gamma)
 	if gamma.A0.Sign() == 0 && gamma.A1.Sign() == 0 {
 		return &eisenstein.ComplexNumber{A0: zero, A1: zero}
 	}
@@ -672,13 +673,15 @@ func cubicSymbol(alpha, beta, quo *eisenstein.ComplexNumber) *eisenstein.Complex
 		gamma.A1.Set(quo.A1)
 	}
 	// (-m * (c^2-1) + n * (c^2-c*d-1))%9 / 3
+	mInt.SetInt64(int64(m))
+	nInt.SetInt64(int64(n))
 	quo.A1.Mul(beta.A0, beta.A0)
 	quo.A0.Sub(quo.A1, one).
-		Mul(quo.A0, new(big.Int).SetInt64(int64(m)))
+		Mul(quo.A0, &mInt)
 	rem.A0.Mul(beta.A0, beta.A1).
 		Add(rem.A0, one)
 	rem.A0.Sub(quo.A1, rem.A0).
-		Mul(rem.A0, new(big.Int).SetInt64(int64(n)))
+		Mul(rem.A0, &nInt)
 	quo.A0.Sub(rem.A0, quo.A0).
 		Mod(quo.A0, nine)
 	rem.SetZero()
@@ -693,5 +696,8 @@ func cubicSymbol(alpha, beta, quo *eisenstein.ComplexNumber) *eisenstein.Complex
 		panic("unexpected value")
 	}
 
-	return rem.Mul(&rem, cubicSymbol(beta, &gamma, quo))
+	return rem.Mul(
+		rem,
+		cubicSymbol(beta, gamma, quo, new(eisenstein.ComplexNumber), new(eisenstein.ComplexNumber)),
+	)
 }

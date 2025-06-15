@@ -21,13 +21,18 @@ import (
 // For example β=64 gives rounds=5 and β=128 gives rounds=10.
 var rounds = 5
 
+const (
+	nbFuzzShort = 1
+	nbFuzz      = 100
+)
+
 func TestIsInSubGroupBatch(t *testing.T) {
 	t.Parallel()
 	parameters := gopter.DefaultTestParameters()
 	if testing.Short() {
-		parameters.MinSuccessfulTests = 1
+		parameters.MinSuccessfulTests = nbFuzzShort
 	} else {
-		parameters.MinSuccessfulTests = 100
+		parameters.MinSuccessfulTests = nbFuzz
 	}
 
 	properties := gopter.NewProperties(parameters)
@@ -129,7 +134,11 @@ func TestIsInSubGroupBatch(t *testing.T) {
 func TestTatePairings(t *testing.T) {
 	t.Parallel()
 	parameters := gopter.DefaultTestParameters()
-	parameters.MinSuccessfulTests = 1
+	if testing.Short() {
+		parameters.MinSuccessfulTests = nbFuzzShort
+	} else {
+		parameters.MinSuccessfulTests = nbFuzz
+	}
 
 	properties := gopter.NewProperties(parameters)
 
@@ -153,6 +162,31 @@ func TestTatePairings(t *testing.T) {
 			return isSecondTateOne(g)
 		},
 		GenFr(),
+	))
+
+	properties.TestingRun(t, gopter.ConsoleReporter(false))
+}
+
+func TestElementCubicSymbol(t *testing.T) {
+	t.Parallel()
+	parameters := gopter.DefaultTestParameters()
+	if testing.Short() {
+		parameters.MinSuccessfulTests = nbFuzzShort
+	} else {
+		parameters.MinSuccessfulTests = nbFuzz
+	}
+
+	properties := gopter.NewProperties(parameters)
+
+	properties.Property("IsCubicResidue should output same result than Exp by (p-1)/3", prop.ForAll(
+		func(a fp.Element) bool {
+			var exp big.Int
+			exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))
+			var b fp.Element
+			b.Exp(a, &exp)
+			return IsCubicResidue(a) == b.IsOne()
+		},
+		GenFp(),
 	))
 
 	properties.TestingRun(t, gopter.ConsoleReporter(false))

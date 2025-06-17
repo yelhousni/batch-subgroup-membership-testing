@@ -3,16 +3,16 @@ QQx.<x> = QQ[]
 rx = x**4 - x**2 + 1
 px = (x-1)**2*rx/3 + x
 
-# BLS12-377-strong curve
-u=-9322841860747558913
+# BLS12-376-strong curve
+u=-8662743315688456193
 p=Integer(px(u))
 r=Integer(rx(u))
 Fp=GF(p)
 E1=EllipticCurve(Fp, [0, 1])
 assert(E1.order()%r == 0)
-# D-type twist curve
-Fp2.<i>=GF(p^2, modulus=[1,0,1])
-E2=EllipticCurve(Fp2, [0, 1/(i+1)])
+# M-type twist curve
+Fp2.<i> = GF(p^2, modulus=[1,0,1])
+E2=EllipticCurve(Fp2, [0, i+2])
 assert(E2.order()%r == 0)
 
 # Check G1-strong
@@ -46,6 +46,6 @@ for i in range(10):
 h2=E2.order()//r
 assert(h2.is_prime())
 
-# Check GT-strong
+# Check NOT GT-strong
 ht=(p**4-p**2+1)//r
-assert(ht.is_prime())
+assert(not ht.is_prime())

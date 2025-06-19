@@ -15,9 +15,9 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fr"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
+	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fr"
 )
 
 func TestMultiExpG1(t *testing.T) {

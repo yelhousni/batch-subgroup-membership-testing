@@ -9,9 +9,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
+	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 )
 
 // ------------------------------------------------------------

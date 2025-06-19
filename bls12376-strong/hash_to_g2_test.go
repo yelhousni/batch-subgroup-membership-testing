@@ -8,9 +8,9 @@ package bls12376strong
 import (
 	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 
-	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/internal/fptower"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
+	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/internal/fptower"
 	"math/rand"
 	"strings"
 	"testing"

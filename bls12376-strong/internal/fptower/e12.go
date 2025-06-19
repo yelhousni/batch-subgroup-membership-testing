@@ -7,8 +7,8 @@ package fptower
 
 import (
 	"errors"
-	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 	"github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fr"
 	"math/big"
 	"sync"

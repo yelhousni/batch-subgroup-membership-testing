@@ -7,33 +7,31 @@ import "github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 
 // Frobenius set z to Frobenius(x), return z
 func (z *E12) Frobenius(x *E12) *E12 {
-	/*
-		// Algorithm 28 from https://eprint.iacr.org/2010/354.pdf (beware typos!)
-		var t [6]E2
+	// Algorithm 28 from https://eprint.iacr.org/2010/354.pdf (beware typos!)
+	var t [6]E2
 
-		// Frobenius acts on fp2 by conjugation
-		t[0].Conjugate(&x.C0.B0)
-		t[1].Conjugate(&x.C0.B1)
-		t[2].Conjugate(&x.C0.B2)
-		t[3].Conjugate(&x.C1.B0)
-		t[4].Conjugate(&x.C1.B1)
-		t[5].Conjugate(&x.C1.B2)
+	// Frobenius acts on fp2 by conjugation
+	t[0].Conjugate(&x.C0.B0)
+	t[1].Conjugate(&x.C0.B1)
+	t[2].Conjugate(&x.C0.B2)
+	t[3].Conjugate(&x.C1.B0)
+	t[4].Conjugate(&x.C1.B1)
+	t[5].Conjugate(&x.C1.B2)
 
-		t[1].MulByNonResidue1Power2(&t[1])
-		t[2].MulByNonResidue1Power4(&t[2])
-		t[3].MulByNonResidue1Power1(&t[3])
-		t[4].MulByNonResidue1Power3(&t[4])
-		t[5].MulByNonResidue1Power5(&t[5])
+	t[1].MulByNonResidue1Power2(&t[1])
+	t[2].MulByNonResidue1Power4(&t[2])
+	t[3].MulByNonResidue1Power1(&t[3])
+	t[4].MulByNonResidue1Power3(&t[4])
+	t[5].MulByNonResidue1Power5(&t[5])
 
-		z.C0.B0 = t[0]
-		z.C0.B1 = t[1]
-		z.C0.B2 = t[2]
-		z.C1.B0 = t[3]
-		z.C1.B1 = t[4]
-		z.C1.B2 = t[5]
-	*/
+	z.C0.B0 = t[0]
+	z.C0.B1 = t[1]
+	z.C0.B2 = t[2]
+	z.C1.B0 = t[3]
+	z.C1.B1 = t[4]
+	z.C1.B2 = t[5]
 
-	return z.Exp(*x, fp.Modulus())
+	return z
 }
 
 // FrobeniusSquare set z to Frobenius^2(x), and return z

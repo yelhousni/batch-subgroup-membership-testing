@@ -5,7 +5,8 @@ package fptower
 
 import "github.com/yelhousni/batch-subgroup-membership/bls12376-strong/fp"
 
-// MulByNonResidue multiplies a E2 by (1,2)
+// MulByNonResidue multiplies a E2 by (2,1)
+// (a+ib)(2+i) = (2a-b, 2b+a)
 func (z *E2) MulByNonResidue(x *E2) *E2 {
 	var a, b fp.Element
 	a.Double(&x.A0).Sub(&a, &x.A1)
@@ -65,7 +66,7 @@ func (z *E2) norm(x *fp.Element) {
 	x.Add(x, &tmp)
 }
 
-// MulBybTwistCurveCoeff multiplies by 4(1,1)
+// MulBybTwistCurveCoeff multiplies by (2,1)
 func (z *E2) MulBybTwistCurveCoeff(x *E2) *E2 {
 	return z.MulByNonResidue(x)
 }

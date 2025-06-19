@@ -36,7 +36,6 @@ func (z *E12) Expt(x *E12) *E12 {
 		var (
 			t0 = new(E12)
 			t1 = new(E12)
-			t2 = new(E12)
 		)
 
 		// Step 1: &result = x^0x2
@@ -58,8 +57,8 @@ func (z *E12) Expt(x *E12) *E12 {
 		t0.Mul(x, t0)
 
 		// Step 14: t2 = x^0xf00
-		t2.CyclotomicSquare(t0)
-		t2.nSquare(8)
+		t2 := t0
+		t2.nSquare(9)
 
 		// Step 15: t1 = x^0xf07
 		t1.Mul(t1, t2)
@@ -93,9 +92,9 @@ func (z *E12) Expt(x *E12) *E12 {
 		result.DecompressKarabina(&result)
 
 		// Step 71: &result = x^0x78383f2600000001
-		result.Mul(x, &result)
+		z.Mul(x, &result)
 
-		return z.Conjugate(&result)
+		return z.Conjugate(z)
 	*/
 	return z.Exp(*x, &xGen)
 }

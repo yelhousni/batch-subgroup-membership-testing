@@ -132,7 +132,32 @@ func MillerLoop(P []G1Affine, Q []G2Affine) (GT, error) {
 	var prodLines [5]E2
 
 	// Compute ∏ᵢ { fᵢ_{x₀,Q}(P) }
-	for i := len(LoopCounter) - 2; i >= 0; i-- {
+	if n >= 1 {
+		// i = 62, separately to avoid an E12 Square
+		// (Square(res) = 1² = 1)
+		// LoopCounter[62] = 1
+		// k = 0, separately to avoid MulBy014 (res × ℓ)
+		// (assign line to res)
+
+		// qProj[0] ← 2qProj[0] and l1 the tangent ℓ passing 2qProj[0]
+		qProj[0].doubleStep(&l1)
+		// line evaluation at P[0] (assign)
+		result.C0.B0.Set(&l1.r0)
+		result.C0.B1.MulByElement(&l1.r1, &p[0].X)
+		result.C1.B1.MulByElement(&l1.r2, &p[0].Y)
+	}
+
+	// k >= 1
+	for k := 1; k < n; k++ {
+		// qProj[k] ← 2qProj[k] and l1 the tangent ℓ passing 2qProj[k]
+		qProj[k].doubleStep(&l1)
+		// line evaluation at P[k]
+		l1.r1.MulByElement(&l1.r1, &p[k].X)
+		l1.r2.MulByElement(&l1.r2, &p[k].Y)
+		result.MulBy014(&l1.r0, &l1.r1, &l1.r2)
+	}
+
+	for i := len(LoopCounter) - 3; i >= 0; i-- {
 		// mutualize the square among n Miller loops
 		// (∏ᵢfᵢ)²
 		result.Square(&result)

@@ -3,7 +3,7 @@
 // bls12376-strong: A batch-SMT-friendly G2-strong and Gt-strong Barreto--Lynn--Scott curve with
 //
 //	embedding degree k=12
-//	seed x₀=-0x816163471f000001
+//	seed x₀=-0x78383f2600000001
 //	𝔽r: r=0xc734c9428876f0384334fc1cb852a71933b8f2c9102a034f0707e4c00000001 (x₀⁴-x₀²+1)
 //	𝔽p: p=0xea4ce6919c7e9da513d75a5627c38344bcd510d6c9940f5ed48752a49ef938f617216eb1f402881353681caaaaaaab ((x₀-1)² ⋅ r(x₀)/3+x₀)
 //	(E/𝔽p): Y²=X³+1

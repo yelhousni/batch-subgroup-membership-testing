@@ -1,5 +1,11 @@
 package fptower
 
+func (z *E12) nSquareCompressed(n int) {
+	for i := 0; i < n; i++ {
+		z.CyclotomicSquareCompressed(z)
+	}
+}
+
 // Expt set z to x^t in E12 and return z (t is the generator of the curve)
 func (z *E12) Expt(x *E12) *E12 {
 	return z.CyclotomicExp(*x, &xGen)

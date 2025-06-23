@@ -13,11 +13,10 @@ import (
 )
 
 // Let h be the cofactor of (E/𝔽p).
-// h = 3 * (2 * 1553806976791259819)²
+// h = 3 * (2 * 1443790552614742699)²
 // We choose bound 1152921504606846976 = 2^60 < 1553806976791259819.
 // For a failure probability of 2⁻ᵝ we need to set rounds=⌈β⌉.
 // For example β=64 gives rounds=1 and β=128 gives rounds=2.
-var bound = big.NewInt(1553806976791259819)
 var rounds = 1
 
 func TestIsInSubGroupBatch(t *testing.T) {
@@ -91,7 +90,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			_, _, g, _ := Generators()
 			result := BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-			return IsInSubGroupBatch(result, bound, rounds)
+			return IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 	))
@@ -116,7 +115,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 			h = fuzzCofactorOfG1(a)
 			result[nbSamples-1].FromJacobian(&h)
 
-			return !IsInSubGroupBatch(result, bound, rounds)
+			return !IsInSubGroupBatch(result, rounds)
 		},
 		GenFr(),
 		GenFp(),
@@ -158,6 +157,46 @@ func TestTatePairings(t *testing.T) {
 }
 
 // benches
+func BenchmarkIsInSubGroupBatchNaiveShort(b *testing.B) {
+	const nbSamples = 100
+
+	// mixer ensures that all the words of a frElement are set
+	var mixer fr.Element
+	mixer.SetRandom()
+	var sampleScalars [nbSamples]fr.Element
+
+	for i := 1; i <= nbSamples; i++ {
+		sampleScalars[i-1].SetUint64(uint64(i)).
+			Mul(&sampleScalars[i-1], &mixer)
+	}
+
+	result := BatchScalarMultiplicationG1(&g1GenAff, sampleScalars[:])
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		IsInSubGroupBatchNaive(result[:])
+	}
+}
+
+func BenchmarkIsInSubGroupBatchShort(b *testing.B) {
+	const nbSamples = 100
+
+	// mixer ensures that all the words of a frElement are set
+	var mixer fr.Element
+	mixer.SetRandom()
+	var sampleScalars [nbSamples]fr.Element
+
+	for i := 1; i <= nbSamples; i++ {
+		sampleScalars[i-1].SetUint64(uint64(i)).
+			Mul(&sampleScalars[i-1], &mixer)
+	}
+
+	result := BatchScalarMultiplicationG1(&g1GenAff, sampleScalars[:])
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		IsInSubGroupBatch(result[:], rounds)
+	}
+}
+
 func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
 	const nbSamples = 1000000
 
@@ -204,7 +243,7 @@ func BenchmarkIsInSubGroupBatch(b *testing.B) {
 		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
-				IsInSubGroupBatch(result[:i], bound, rounds)
+				IsInSubGroupBatch(result[:i], rounds)
 			}
 		})
 	}

@@ -184,7 +184,7 @@ func TestElementCubicSymbol(t *testing.T) {
 			exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))
 			var b fp.Element
 			b.Exp(a, &exp)
-			return IsCubicResidue(a) == b.IsOne()
+			return IsCubicResidue(&a) == b.IsOne()
 		},
 		GenFp(),
 	))
@@ -193,9 +193,42 @@ func TestElementCubicSymbol(t *testing.T) {
 }
 
 // benches
+func BenchmarkCubicSymbolEisensteinGCD(b *testing.B) {
+	var m fp.Element
+	m.SetRandom()
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		CubicSymbol(m)
+	}
+}
+
+func BenchmarkCubicSymbolExpBigInt(b *testing.B) {
+	var m fp.Element
+	m.SetString("2929494998551518193999723405412053246602204569353345363675794262224468384146017685416659704346369932930853282892458")
+	var exp, _m, r big.Int
+	exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))
+	m.BigInt(&_m)
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		r.Exp(&_m, &exp, fp.Modulus())
+	}
+}
+
+func BenchmarkCubicSymbolExpFp(b *testing.B) {
+	var m fp.Element
+	m.SetString("2929494998551518193999723405412053246602204569353345363675794262224468384146017685416659704346369932930853282892458")
+	var exp big.Int
+	exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		m.Exp(m, &exp)
+	}
+}
+
 func BenchmarkFirstTate(b *testing.B) {
 	var m fr.Element
-	m.SetRandom()
+	m.SetString("2929494998551518193999723405412053246602204569353345363675794262224468384146017685416659704346369932930853282892458")
 	var _m big.Int
 	_, _, g, _ := curve.Generators()
 	g.ScalarMultiplication(&g, m.BigInt(&_m))

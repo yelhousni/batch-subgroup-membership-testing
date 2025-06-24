@@ -14,4 +14,4 @@ The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang l
 - `bls12377/` contains the implementation of the new method for the BLS12-377 curve.
 - `bls12377-strong/` contains the implementation of a new BLS12-377 curve. It is G2-strong, GT-strong and optimal for batch SMT.
 - `bls12376-strong/` contains the implementation of a new BLS12-376 curve. It is G2-strong and optimal for batch SMT.
-- `sage/` contains SageMath scripts to validate formulas related to the elliptic curves and the Tate pairings.
+- `sage/` contains SageMath scripts to validate formulas related to the elliptic curves and the Tate pairings. It also contains the scripts that were used to find the new BLS12 curves.

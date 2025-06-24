@@ -14,6 +14,15 @@ import (
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
+	for i := range points {
+		if !points[i].IsInSubGroup() {
+			return false
+		}
+	}
+	return true
+}
+
+func IsInSubGroupBatchNaiveParallel(points []curve.G1Affine) bool {
 	var nbErrors int64
 	parallel.Execute(len(points), func(start, end int) {
 		for i := start; i < end; i++ {
@@ -33,6 +42,38 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatch(points []curve.G1Affine, rounds int) bool {
+	const windowSize = 64
+	var br [windowSize / 8]byte
+
+	// Check Sj are on E[r]
+	for i := 0; i < windowSize; i++ {
+		var sum g1JacExtended
+		for j := range len(points) {
+			pos := j % windowSize
+			if pos == 0 {
+				// re sample the random bytes every windowSize points
+				// as per the doc:
+				// Read fills b with cryptographically secure random bytes. It never returns an error, and always fills b entirely.
+				rand.Read(br[:])
+			}
+			// check if the bit is set
+			if br[pos/8]&(1<<(pos%8)) != 0 {
+				// add the point to the sum
+				sum.addMixed(&points[j])
+			}
+		}
+
+		p := *fromJacExtended(&sum)
+		if !p.IsInSubGroup() {
+			return false
+		}
+	}
+
+	return true
+
+}
+
+func IsInSubGroupBatchParallel(points []curve.G1Affine, rounds int) bool {
 	var nbErrors int64
 	parallel.Execute(rounds, func(start, end int) {
 

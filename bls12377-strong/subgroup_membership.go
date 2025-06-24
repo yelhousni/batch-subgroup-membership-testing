@@ -15,6 +15,15 @@ import (
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []G1Affine) bool {
+	for i := range points {
+		if !points[i].IsInSubGroup() {
+			return false
+		}
+	}
+	return true
+}
+
+func IsInSubGroupBatchNaiveParallel(points []G1Affine) bool {
 	var nbErrors int64
 	parallel.Execute(len(points), func(start, end int) {
 		for i := start; i < end; i++ {
@@ -39,6 +48,24 @@ func IsInSubGroupBatchNaive(points []G1Affine) bool {
 func IsInSubGroupBatch(points []G1Affine, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
+	for i := range points {
+		// 1.1. Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1, with P3 = (-1,0).
+		if !isFirstTateOne(points[i]) {
+			return false
+		}
+		// 1.2. Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1, with P3 = (0,1).
+		if !isSecondTateOne(points[i]) {
+			return false
+		}
+	}
+
+	// 2. Check S1 is on E[r]
+	return _msmCheck(points)
+}
+
+func IsInSubGroupBatchParallel(points []G1Affine, rounds int) bool {
+
+	// 1. Check points are on E[r*e']
 	var nbErrors int64
 	parallel.Execute(len(points), func(start, end int) {
 		for i := start; i < end; i++ {
@@ -58,11 +85,8 @@ func IsInSubGroupBatch(points []G1Affine, rounds int) bool {
 		return false
 	}
 
-	// 2. Check Sj are on E[r]
-	if !_msmCheck(points) {
-		return false
-	}
-	return true
+	// 2. Check S1 is on E[r]
+	return _msmCheck(points)
 }
 
 // ---- Tate pairings ----

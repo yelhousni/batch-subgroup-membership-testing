@@ -13,6 +13,15 @@ import (
 //
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
+	for i := range points {
+		if !points[i].IsInSubGroup() {
+			return false
+		}
+	}
+	return true
+}
+
+func IsInSubGroupBatchNaiveParallel(points []curve.G1Affine) bool {
 	var nbErrors int64
 	parallel.Execute(len(points), func(start, end int) {
 		for i := start; i < end; i++ {
@@ -35,6 +44,31 @@ func IsInSubGroupBatchNaive(points []curve.G1Affine) bool {
 // [Koshelev22]: https://eprint.iacr.org/2022/037.pdf
 // [Scott21]: https://eprint.iacr.org/2021/1130.pdf
 func IsInSubGroupBatch(points []curve.G1Affine, rounds int) bool {
+
+	// 1. Check points are on E[r*e']
+	for i := range points {
+		// 1.1. Tate_{3,P3}(Q) = (y-2)^((p-1)/3) == 1, with P3 = (0,2).
+		if !isFirstTateOne(points[i]) {
+			return false
+		}
+		// 1.2. Tate_{11,P11}(Q) == 1
+		if !isSecondTateOne(points[i]) {
+			return false
+		}
+	}
+
+	// 2. Check Sj are on E[r]
+	const nbRounds = 5
+	for i := 0; i < nbRounds; i++ {
+		if !_msmCheck(points) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func IsInSubGroupBatchParallel(points []curve.G1Affine, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
 	var nbErrors int64

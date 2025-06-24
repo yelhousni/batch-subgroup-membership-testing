@@ -166,55 +166,32 @@ func BenchmarkIsInSubGroupBatchShort(b *testing.B) {
 	}
 }
 
-func BenchmarkIsInSubGroupBatchNaive(b *testing.B) {
-	const nbSamples = 1000000
-
-	// mixer ensures that all the words of a frElement are set
-	var mixer fr.Element
-	mixer.SetRandom()
+func BenchmarkComparison(b *testing.B) {
+	const (
+		pow       = 22
+		nbSamples = 1 << pow
+	)
 	var sampleScalars [nbSamples]fr.Element
-
-	for i := 1; i <= nbSamples; i++ {
-		sampleScalars[i-1].SetUint64(uint64(i)).
-			Mul(&sampleScalars[i-1], &mixer)
-	}
+	fillBenchScalars(sampleScalars[:])
 
 	_, _, g, _ := curve.Generators()
 	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
 
-	for _, i := range []uint64{10, 100, 1000, 10000, 100000, 1000000} {
-		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
+	for i := 5; i <= pow; i++ {
+		using := 1 << i
+		b.Run(fmt.Sprintf("%d points-naive", using), func(b *testing.B) {
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
-				IsInSubGroupBatchNaive(result[:i])
+				IsInSubGroupBatchNaive(result[:using])
 			}
 		})
-	}
-}
-
-func BenchmarkIsInSubGroupBatch(b *testing.B) {
-	const nbSamples = 1000000
-
-	// mixer ensures that all the words of a frElement are set
-	var mixer fr.Element
-	mixer.SetRandom()
-	var sampleScalars [nbSamples]fr.Element
-
-	for i := 1; i <= nbSamples; i++ {
-		sampleScalars[i-1].SetUint64(uint64(i)).
-			Mul(&sampleScalars[i-1], &mixer)
-	}
-
-	_, _, g, _ := curve.Generators()
-	result := curve.BatchScalarMultiplicationG1(&g, sampleScalars[:])
-
-	for _, i := range []uint64{10, 100, 1000, 10000, 100000, 1000000} {
-		b.Run(fmt.Sprintf("%d points", i), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%d points", using), func(b *testing.B) {
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
-				IsInSubGroupBatch(result[:i], rounds)
+				IsInSubGroupBatch(result[:using], rounds)
 			}
 		})
+
 	}
 }
 
@@ -292,5 +269,12 @@ func GenFp() gopter.Gen {
 		elmt.MustSetRandom()
 
 		return gopter.NewGenResult(elmt, gopter.NoShrinker)
+	}
+}
+
+func fillBenchScalars(sampleScalars []fr.Element) {
+	// ensure every words of the scalars are filled
+	for i := 0; i < len(sampleScalars); i++ {
+		sampleScalars[i].MustSetRandom()
 	}
 }

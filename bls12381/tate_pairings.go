@@ -89,6 +89,7 @@ var lines [7]line
 var a, b big.Int
 var beta eisenstein.ComplexNumber
 var two_p fp.Element
+var one, mone, three, mInt big.Int
 
 func init() {
 	// P = (
@@ -120,8 +121,12 @@ func init() {
 	beta.A0 = a
 	beta.A1 = b
 
-	// 2
+	// some constatns
 	two_p.SetInt64(2)
+	one.SetInt64(1)
+	mone.Neg(&one)
+	three.SetInt64(3)
+
 }
 
 // expByp11 uses a short addition chain to compute x^p11 where p11=(p-1)/11 .
@@ -628,12 +633,7 @@ func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
 }
 
 func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
-	var one, mone, three, mInt big.Int
-	one.SetInt64(1)
-	mone.Neg(&one)
-	three.SetInt64(3)
-
-	var result, quo, rem, gamma eisenstein.ComplexNumber
+	var result, quo, gamma eisenstein.ComplexNumber
 	result.SetOne()
 
 	for {
@@ -662,24 +662,23 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		// 		(γ / (1-ω))[0] = (2γ[0] - γ[1]) / 3
 		// 		(γ / (1-ω))[1] = (γ[0] + γ[1]) / 3
 		m := uint64(0)
-		quo.A0.Add(&gamma.A0, &gamma.A0).
-			Sub(&quo.A0, &gamma.A1).
-			Quo(&quo.A0, &three)
 		quo.A1.Add(&gamma.A0, &gamma.A1)
 		r1 := mod3(&quo.A1)
-		quo.A1.Quo(&quo.A1, &three)
 
 		// the result is integral iff γ[0] + γ[1] = 0 mod 3
 		for r1 == 0 {
-			m++
-			gamma.A0.Set(&quo.A0)
-			gamma.A1.Set(&quo.A1)
 			quo.A0.Add(&gamma.A0, &gamma.A0).
 				Sub(&quo.A0, &gamma.A1)
+			quo.A0.Div(&quo.A0, &three)
+			quo.A1.Div(&quo.A1, &three)
+
+			m++
+
+			gamma.A0.Set(&quo.A0)
+			gamma.A1.Set(&quo.A1)
+
 			quo.A1.Add(&gamma.A0, &gamma.A1)
-			quo.A0.Quo(&quo.A0, &three)
 			r1 = mod3(&quo.A1)
-			quo.A1.Quo(&quo.A1, &three)
 		}
 
 		// Make primary:
@@ -709,17 +708,18 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		mInt.SetUint64(m)
 		quo.A1.Mul(&beta.A0, &beta.A0)
 		quo.A0.Sub(&quo.A1, &one).Mul(&quo.A0, &mInt)
-		rem.A0.Mul(&beta.A0, &beta.A1).Add(&rem.A0, &one)
 		// n can only be {0,1,2}
 		switch n {
 		case 0:
 			quo.A0.Neg(&quo.A0)
 		case 1:
-			rem.A0.Sub(&quo.A1, &rem.A0)
-			quo.A0.Sub(&rem.A0, &quo.A0)
+			alpha.A0.Mul(&beta.A0, &beta.A1).Add(&alpha.A0, &one)
+			alpha.A0.Sub(&quo.A1, &alpha.A0)
+			quo.A0.Sub(&alpha.A0, &quo.A0)
 		case 2:
-			rem.A0.Sub(&quo.A1, &rem.A0).Add(&rem.A0, &rem.A0)
-			quo.A0.Sub(&rem.A0, &quo.A0)
+			alpha.A0.Mul(&beta.A0, &beta.A1).Add(&alpha.A0, &one)
+			alpha.A0.Sub(&quo.A1, &alpha.A0).Add(&alpha.A0, &alpha.A0)
+			quo.A0.Sub(&alpha.A0, &quo.A0)
 		default:
 			panic("unexpected value for n in cubic symbol computation")
 		}
@@ -727,21 +727,22 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		// Multiply the result by one of 1, ω, ω^2.
 		//
 		// We avoid dividing exp by 3 and switch on the value of exp mod 9.
-		switch mod9(&quo.A0) {
+		r0 = mod9(&quo.A0)
+		switch r0 {
 		case 0:
 			// muliply the result by 1
 		case 3:
 			// muliply the result by ω
-			rem.A0.Neg(&result.A1)
-			rem.A1.Sub(&result.A0, &result.A1)
-			result.A0.Set(&rem.A0)
-			result.A1.Set(&rem.A1)
+			alpha.A0.Neg(&result.A1)
+			quo.A1.Sub(&result.A0, &result.A1)
+			result.A0.Set(&alpha.A0)
+			result.A1.Set(&quo.A1)
 		case 6:
 			// muliply the result by ω^2
-			rem.A0.Sub(&result.A1, &result.A0)
-			rem.A1.Neg(&result.A0)
-			result.A0.Set(&rem.A0)
-			result.A1.Set(&rem.A1)
+			alpha.A0.Sub(&result.A1, &result.A0)
+			quo.A1.Neg(&result.A0)
+			result.A0.Set(&alpha.A0)
+			result.A1.Set(&quo.A1)
 		default:
 			panic("unexpected value in cubic symbol computation")
 		}

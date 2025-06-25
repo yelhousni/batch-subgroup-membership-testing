@@ -90,6 +90,8 @@ func (z *ComplexNumber) Sub(x, y *ComplexNumber) *ComplexNumber {
 // Given that ω²+ω+1=0, the explicit formula is:
 //
 //	(x₀ + x₁ω)(y₀ + y₁ω) = (x₀y₀ - x₁y₁) + (x₀y₁ + x₁y₀ - x₁y₁)ω
+//
+// We use Karatsuba multiplication to compute the product efficiently.
 func (z *ComplexNumber) Mul(x, y *ComplexNumber) *ComplexNumber {
 	z.t0.Mul(&x.A0, &y.A0) // t0 = x₀y₀
 	z.t1.Mul(&x.A1, &y.A1) // t1 = x₁y₁
@@ -97,9 +99,9 @@ func (z *ComplexNumber) Mul(x, y *ComplexNumber) *ComplexNumber {
 	z.t3.Add(&y.A0, &y.A1) // t3 = y₀ + y₁
 	z.t2.Mul(&z.t2, &z.t3) // t2 = (x₀ + x₁)(y₀ + y₁)
 	z.A0.Sub(&z.t0, &z.t1) // A0 = x₀y₀ - x₁y₁  (real part)
-	z.t2.Sub(&z.t2, &z.t0)
-	z.t2.Sub(&z.t2, &z.t1)
-	z.A1.Sub(&z.t2, &z.t1) // A1 = (x₀ + x₁)(y₀ + y₁) - x₀y₀ - x₁y₁ (imaginary part)
+	z.t3.Add(&z.t1, &z.t1)
+	z.t3.Add(&z.t3, &z.t0)
+	z.A1.Sub(&z.t2, &z.t3) // A1 = (x₀ + x₁)(y₀ + y₁) - x₀y₀ - x₁y₁ (imaginary part)
 	return z
 }
 
@@ -108,42 +110,39 @@ func (z *ComplexNumber) Mul(x, y *ComplexNumber) *ComplexNumber {
 // The explicit formula is:
 //
 //	N(x0+x1ω) = x0² + x1² - x0*x1
+//
+// We rearrange into it (x0-x1)² + x0x1
 func (z *ComplexNumber) Norm(norm *big.Int) *big.Int {
-	norm.Add(
-		z.t1.Mul(&z.A0, &z.A0),
-		z.t0.Mul(&z.A1, &z.A1),
-	)
-	norm.Sub(
-		norm,
-		z.t1.Mul(&z.A0, &z.A1),
-	)
+	z.t1.Sub(&z.A0, &z.A1).Mul(&z.t1, &z.t1)
+	z.t2.Mul(&z.A0, &z.A1)
+	norm.Add(&z.t1, &z.t2)
 	return norm
 }
 
 // roundNearest sets z to the coordinate-wise nearest integer division of num/d,
 // using symmetric rounding (round half away from zero).
 func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
-	half := z.t0.Rsh(d, 1) // half = d / 2
+	z.t0.Rsh(d, 1) // z.t0 = d / 2
 
 	// Round A0 coordinate
 	if num.A0.Sign() >= 0 {
-		z.t1.Add(&num.A0, half)
-		z.A0.Div(&z.t1, d)
+		z.t1.Add(&num.A0, &z.t0)
+		z.A0.Quo(&z.t1, d)
 	} else {
 		z.t1.Neg(&num.A0)
-		z.t1.Add(&z.t1, half)
-		z.t1.Div(&z.t1, d)
+		z.t1.Add(&z.t1, &z.t0)
+		z.t1.Quo(&z.t1, d)
 		z.A0.Neg(&z.t1)
 	}
 
 	// Round A1 coordinate
 	if num.A1.Sign() >= 0 {
-		z.t2.Add(&num.A1, half)
-		z.A1.Div(&z.t2, d)
+		z.t2.Add(&num.A1, &z.t0)
+		z.A1.Quo(&z.t2, d)
 	} else {
 		z.t2.Neg(&num.A1)
-		z.t2.Add(&z.t2, half)
-		z.t2.Div(&z.t2, d)
+		z.t2.Add(&z.t2, &z.t0)
+		z.t2.Quo(&z.t2, d)
 		z.A1.Neg(&z.t2)
 	}
 }
@@ -222,12 +221,11 @@ func (z *ComplexNumber) Quo(x, y *ComplexNumber) *ComplexNumber {
 	}
 
 	// num = x * ȳ   (ȳ computed in a fresh variable → y unchanged)
-	var yConj ComplexNumber
-	yConj.Conjugate(y)
-	yConj.Mul(x, &yConj)
+	z.Conjugate(y)
+	z.Mul(x, z)
 
 	// first guess by *symmetric* rounding of both coordinates
-	z.roundNearest(&yConj, norm)
+	z.roundNearest(z, norm)
 
 	return z
 }

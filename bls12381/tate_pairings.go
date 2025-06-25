@@ -669,8 +669,8 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		for r1 == 0 {
 			quo.A0.Add(&gamma.A0, &gamma.A0).
 				Sub(&quo.A0, &gamma.A1)
-			quo.A0.Div(&quo.A0, &three)
-			quo.A1.Div(&quo.A1, &three)
+			quo.A0.Quo(&quo.A0, &three)
+			quo.A1.Quo(&quo.A1, &three)
 
 			m++
 

@@ -211,36 +211,23 @@ func (z *ComplexNumber) QuoRem(x, y, r *ComplexNumber) (*ComplexNumber, *Complex
 	return z, r
 }
 
-// HalfGCD returns the rational reconstruction of a, b.
-// This outputs w, v, u s.t. w = a*u + b*v.
-func HalfGCD(a, b *ComplexNumber) [3]*ComplexNumber {
+// Quo sets z to the Euclidean quotient of x / y
+// and guarantees ‖r‖ < ‖y‖ (true Euclidean division in ℤ[ω]).
+func (z *ComplexNumber) Quo(x, y *ComplexNumber) *ComplexNumber {
 
-	var aRun, bRun, u, v, u_, v_, quotient, remainder, t, t1, t2 ComplexNumber
-	var sqrt big.Int
-
-	aRun.Set(a)
-	bRun.Set(b)
-	u.SetOne()
-	v.SetZero()
-	u_.SetZero()
-	v_.SetOne()
-
-	// Eisenstein integers form an Euclidean domain for the norm
 	norm := new(big.Int)
-	sqrt.Sqrt(a.Norm(norm))
-	for bRun.Norm(norm).Cmp(&sqrt) >= 0 {
-		quotient.QuoRem(&aRun, &bRun, &remainder)
-		t.Mul(&u_, &quotient)
-		t1.Sub(&u, &t)
-		t.Mul(&v_, &quotient)
-		t2.Sub(&v, &t)
-		aRun.Set(&bRun)
-		u.Set(&u_)
-		v.Set(&v_)
-		bRun.Set(&remainder)
-		u_.Set(&t1)
-		v_.Set(&t2)
+	y.Norm(norm) // > 0  (Eisenstein norm is always non-neg)
+	if norm.Sign() == 0 {
+		panic("division by zero")
 	}
 
-	return [3]*ComplexNumber{&bRun, &v_, &u_}
+	// num = x * ȳ   (ȳ computed in a fresh variable → y unchanged)
+	var yConj ComplexNumber
+	yConj.Conjugate(y)
+	yConj.Mul(x, &yConj)
+
+	// first guess by *symmetric* rounding of both coordinates
+	z.roundNearest(&yConj, norm)
+
+	return z
 }

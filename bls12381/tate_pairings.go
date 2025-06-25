@@ -618,7 +618,7 @@ func expByp11(x fp.Element) fp.Element {
 }
 
 func IsCubicResidue(x *fp.Element) bool {
-	return CubicSymbol(*x).A0.Cmp(big.NewInt(1)) == 0
+	return CubicSymbol(*x).A0.Cmp(&one) == 0
 }
 
 func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {

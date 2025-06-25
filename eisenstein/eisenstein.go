@@ -93,13 +93,13 @@ func (z *ComplexNumber) Sub(x, y *ComplexNumber) *ComplexNumber {
 func (z *ComplexNumber) Mul(x, y *ComplexNumber) *ComplexNumber {
 	z.t0.Mul(&x.A0, &y.A0) // t0 = x₀y₀
 	z.t1.Mul(&x.A1, &y.A1) // t1 = x₁y₁
-	z.t3.Sub(&z.t0, &z.t1) // t3 = x₀y₀ - x₁y₁  (real part)
-	z.t0.Mul(&x.A0, &y.A1) // t0 = x₀y₁
-	z.t2.Mul(&x.A1, &y.A0) // t2 = x₁y₀
-	z.t0.Add(&z.t0, &z.t2) // t0 = x₀y₁ + x₁y₀
-	z.t4.Sub(&z.t0, &z.t1) // t4 = x₀y₁ + x₁y₀ - x₁y₁  (imaginary part)
-	z.A0.Set(&z.t3)        // z.A0 = real part
-	z.A1.Set(&z.t4)        // z.A1 = imaginary part
+	z.t2.Add(&x.A0, &x.A1) // t2 = x₀ + x₁
+	z.t3.Add(&y.A0, &y.A1) // t3 = y₀ + y₁
+	z.t2.Mul(&z.t2, &z.t3) // t2 = (x₀ + x₁)(y₀ + y₁)
+	z.A0.Sub(&z.t0, &z.t1) // A0 = x₀y₀ - x₁y₁  (real part)
+	z.t2.Sub(&z.t2, &z.t0)
+	z.t2.Sub(&z.t2, &z.t1)
+	z.A1.Sub(&z.t2, &z.t1) // A1 = (x₀ + x₁)(y₀ + y₁) - x₀y₀ - x₁y₁ (imaginary part)
 	return z
 }
 

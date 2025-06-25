@@ -290,3 +290,21 @@ func BenchmarkQuoRem(b *testing.B) {
 		quo.QuoRem(&a, &c, &rem)
 	}
 }
+
+func BenchmarkMul(b *testing.B) {
+	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128
+	a0, _ := rand.Int(rand.Reader, n)
+	a1, _ := rand.Int(rand.Reader, n)
+	c0, _ := rand.Int(rand.Reader, n)
+	c1, _ := rand.Int(rand.Reader, n)
+	var a, c ComplexNumber
+	a.A0.Set(a0)
+	a.A1.Set(a1)
+	c.A0.Set(c0)
+	c.A1.Set(c1)
+	var d ComplexNumber
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		d.Mul(&a, &c)
+	}
+}

@@ -4,4 +4,6 @@
 // algebraic number field Q(ω) – the third cyclotomic field.  These are of the
 // form z = a + bω, where a and b are integers and ω is a primitive third root
 // of unity i.e. ω²+ω+1 = 0.
+//
+// This is from gnark-crypto but faster.
 package eisenstein

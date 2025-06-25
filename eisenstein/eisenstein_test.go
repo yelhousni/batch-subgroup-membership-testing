@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
@@ -211,36 +210,6 @@ func TestEisensteinArithmetic(t *testing.T) {
 	properties.TestingRun(t, gopter.ConsoleReporter(false))
 }
 
-func TestEisensteinHalfGCD(t *testing.T) {
-
-	t.Parallel()
-	parameters := gopter.DefaultTestParameters()
-	if testing.Short() {
-		parameters.MinSuccessfulTests = nbFuzzShort
-	} else {
-		parameters.MinSuccessfulTests = nbFuzz
-	}
-
-	properties := gopter.NewProperties(parameters)
-
-	genE := GenComplexNumber(boundSize)
-
-	properties.Property("half-GCD", prop.ForAll(
-		func(a, b *ComplexNumber) bool {
-			res := HalfGCD(a, b)
-			var c, d ComplexNumber
-			c.Mul(b, res[1])
-			d.Mul(a, res[2])
-			d.Add(&c, &d)
-			return d.Equal(res[0])
-		},
-		genE,
-		genE,
-	))
-
-	properties.TestingRun(t, gopter.ConsoleReporter(false))
-}
-
 func TestEisensteinQuoRem(t *testing.T) {
 	t.Parallel()
 	parameters := gopter.DefaultTestParameters()
@@ -277,33 +246,6 @@ func TestEisensteinQuoRem(t *testing.T) {
 	))
 }
 
-func TestRegressionHalfGCD1483(t *testing.T) {
-	// This test is a regression test for issue #1483 in gnark
-	a0, _ := new(big.Int).SetString("64502973549206556628585045361533709077", 10)
-	a1, _ := new(big.Int).SetString("-303414439467246543595250775667605759171", 10)
-	c0, _ := new(big.Int).SetString("-432420386565659656852420866390673177323", 10)
-	c1, _ := new(big.Int).SetString("238911465918039986966665730306072050094", 10)
-	var a, c ComplexNumber
-	a.A0.Set(a0)
-	a.A1.Set(a1)
-	c.A0.Set(c0)
-	c.A1.Set(c1)
-
-	ticker := time.NewTimer(time.Second * 3)
-	doneCh := make(chan struct{})
-	go func() {
-		HalfGCD(&a, &c)
-		close(doneCh)
-	}()
-
-	select {
-	case <-ticker.C:
-		t.Error("HalfGCD took too long to compute")
-	case <-doneCh:
-		// Test passed
-	}
-}
-
 // GenNumber generates a random integer
 func GenNumber(boundSize int64) gopter.Gen {
 	return func(genParams *gopter.GenParameters) *gopter.GenResult {
@@ -330,42 +272,6 @@ func GenComplexNumber(boundSize int64) gopter.Gen {
 
 // bench
 var benchRes [3]*ComplexNumber
-
-func BenchmarkHalfGCD(b *testing.B) {
-	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128
-	a0, _ := rand.Int(rand.Reader, n)
-	a1, _ := rand.Int(rand.Reader, n)
-	c0, _ := rand.Int(rand.Reader, n)
-	c1, _ := rand.Int(rand.Reader, n)
-	var a, c ComplexNumber
-	a.A0.Set(a0)
-	a.A1.Set(a1)
-	c.A0.Set(c0)
-	c.A1.Set(c1)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		benchRes = HalfGCD(&a, &c)
-	}
-}
-
-func BenchmarkMul(b *testing.B) {
-	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128
-	a0, _ := rand.Int(rand.Reader, n)
-	a1, _ := rand.Int(rand.Reader, n)
-	c0, _ := rand.Int(rand.Reader, n)
-	c1, _ := rand.Int(rand.Reader, n)
-	var a, c ComplexNumber
-	a.A0.Set(a0)
-	a.A1.Set(a1)
-	c.A0.Set(c0)
-	c.A1.Set(c1)
-	var res ComplexNumber
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		res.Mul(&a, &c)
-	}
-
-}
 
 func BenchmarkQuoRem(b *testing.B) {
 	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128

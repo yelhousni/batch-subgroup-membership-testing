@@ -122,10 +122,10 @@ func init() {
 	beta.A1 = b
 
 	// some constatns
-	two_p.SetInt64(2)
-	one.SetInt64(1)
+	two_p.SetUint64(2)
+	one.SetUint64(1)
 	mone.Neg(&one)
-	three.SetInt64(3)
+	three.SetUint64(3)
 
 }
 
@@ -625,7 +625,7 @@ func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
 	// α = x + ω * 0
 	var alpha eisenstein.ComplexNumber
 	x.BigInt(&alpha.A0)
-	alpha.A1.SetInt64(0)
+	alpha.A1.SetUint64(0)
 	// norm(β) = p, with β[1] = 0 mod 3 and β[0] ≠ 0
 	var _beta eisenstein.ComplexNumber
 	_beta.Set(&beta)

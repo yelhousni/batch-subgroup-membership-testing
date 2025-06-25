@@ -2,6 +2,7 @@ package bls12381
 
 import (
 	"math/big"
+	"unsafe"
 
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-381"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
@@ -627,11 +628,10 @@ func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
 }
 
 func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
-	var one, mone, three, nine, mInt big.Int
+	var one, mone, three, mInt big.Int
 	one.SetInt64(1)
 	mone.Neg(&one)
 	three.SetInt64(3)
-	nine.SetInt64(9)
 
 	var result, quo, rem, gamma eisenstein.ComplexNumber
 	result.SetOne()
@@ -665,18 +665,21 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		quo.A0.Add(&gamma.A0, &gamma.A0).
 			Sub(&quo.A0, &gamma.A1).
 			Quo(&quo.A0, &three)
-		quo.A1.Add(&gamma.A0, &gamma.A1).
-			QuoRem(&quo.A1, &three, &rem.A1)
+		quo.A1.Add(&gamma.A0, &gamma.A1)
+		r1 := mod3(&quo.A1)
+		quo.A1.Quo(&quo.A1, &three)
 
 		// the result is integral iff γ[0] + γ[1] = 0 mod 3
-		for rem.A1.Sign() == 0 {
+		for r1 == 0 {
 			m++
 			gamma.A0.Set(&quo.A0)
 			gamma.A1.Set(&quo.A1)
-			quo.A0.Add(&gamma.A0, &gamma.A0).Sub(&quo.A0, &gamma.A1)
+			quo.A0.Add(&gamma.A0, &gamma.A0).
+				Sub(&quo.A0, &gamma.A1)
 			quo.A1.Add(&gamma.A0, &gamma.A1)
 			quo.A0.Quo(&quo.A0, &three)
-			quo.A1.QuoRem(&quo.A1, &three, &rem.A1)
+			r1 = mod3(&quo.A1)
+			quo.A1.Quo(&quo.A1, &three)
 		}
 
 		// Make primary:
@@ -690,7 +693,7 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		quo.A0.Neg(&gamma.A0)
 		quo.A1.Sub(&gamma.A0, &gamma.A1)
 		r0 := mod3(&quo.A0)
-		r1 := mod3(&quo.A1)
+		r1 = mod3(&quo.A1)
 		if r0 == 0 {
 			n = 1
 			gamma.A0.Neg(&quo.A1)
@@ -712,10 +715,10 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		case 0:
 			quo.A0.Neg(&quo.A0)
 		case 1:
-			rem.A0.Sub(&quo.A1, &rem.A0) // c^2 - cd - 1
+			rem.A0.Sub(&quo.A1, &rem.A0)
 			quo.A0.Sub(&rem.A0, &quo.A0)
 		case 2:
-			rem.A0.Sub(&quo.A1, &rem.A0).Add(&rem.A0, &rem.A0) // 2(c^2 - cd - 1)
+			rem.A0.Sub(&quo.A1, &rem.A0).Add(&rem.A0, &rem.A0)
 			quo.A0.Sub(&rem.A0, &quo.A0)
 		default:
 			panic("unexpected value for n in cubic symbol computation")
@@ -724,8 +727,7 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		// Multiply the result by one of 1, ω, ω^2.
 		//
 		// We avoid dividing exp by 3 and switch on the value of exp mod 9.
-		quo.A0.Mod(&quo.A0, &nine)
-		switch quo.A0.Uint64() {
+		switch mod9(&quo.A0) {
 		case 0:
 			// muliply the result by 1
 		case 3:
@@ -757,6 +759,60 @@ func mod3(z *big.Int) uint64 {
 		sumOfLimbsMod3 = (sumOfLimbsMod3 + (uint64(limb) % 3)) % 3
 	}
 	return sumOfLimbsMod3
+}
+
+func mod9(z *big.Int) uint64 {
+	limbs := z.Bits()
+	var sumOfLimbsMod9 uint64
+
+	// Determine the effective power of 2 for each limb based on Word size
+	// big.Word is an unsigned integer type for a machine word.
+	// We need 2^WordSize % 9
+	var wordPow2Mod9 uint64
+
+	switch unsafe.Sizeof(big.Word(0)) {
+	case 4: // uint32
+		// 2^32 % 9
+		// 32 = 6*5 + 2
+		// 2^32 = (2^6)^5 * 2^2
+		// (2^6 % 9)^5 * 2^2 % 9
+		// (1)^5 * 4 % 9 = 4 % 9 = 4
+		wordPow2Mod9 = 4
+	case 8: // uint64
+		// 2^64 % 9
+		// 64 = 6*10 + 4
+		// 2^64 = (2^6)^10 * 2^4
+		// (2^6 % 9)^10 * 2^4 % 9
+		// (1)^10 * 16 % 9 = 16 % 9 = 7
+		wordPow2Mod9 = 7
+	default:
+		// Fallback for unexpected big.Word size, though highly unlikely
+		// This path would indicate a very unusual or non-standard Go compilation.
+		// In a real-world scenario, you might want to panic or use z.Mod directly.
+		return z.Mod(z, big.NewInt(9)).Uint64()
+	}
+
+	currentMultiplier := uint64(1) // Represents (2^W)^i % 9 for the current limb
+
+	for _, limb := range limbs {
+		// Each limb represents limb_val * (2^W)^i
+		// The overall sum is sum (limb_val_i * (2^W)^i)
+		// We need to sum (limb_val_i % 9 * ((2^W)^i % 9)) % 9
+
+		limbValMod9 := uint64(limb) % 9
+		term := (limbValMod9 * currentMultiplier) % 9
+		sumOfLimbsMod9 = (sumOfLimbsMod9 + term) % 9
+
+		// Update multiplier for the next limb: next_multiplier = current_multiplier * (2^W % 9)
+		currentMultiplier = (currentMultiplier * wordPow2Mod9) % 9
+	}
+
+	// Handle negative numbers: math/big's Rem returns a result with the same sign as z.
+	// For modulo, we typically want a non-negative result.
+	if z.Sign() < 0 && sumOfLimbsMod9 != 0 {
+		return 9 - sumOfLimbsMod9
+	}
+	return sumOfLimbsMod9
 }
 
 // expByp3 uses a short addition chain to compute x^p3 where p3=(p-1)/3 .

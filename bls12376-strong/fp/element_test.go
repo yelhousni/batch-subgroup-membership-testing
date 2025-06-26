@@ -63,6 +63,36 @@ func BenchmarkElementSetBytes(b *testing.B) {
 
 }
 
+func BenchmarkElementLegendrePornin(b *testing.B) {
+	var x Element
+	x.MustSetRandom()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		x.Legendre()
+	}
+}
+
+func BenchmarkElementLegendreGCD(b *testing.B) {
+	var x Element
+	x.MustSetRandom()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		x.legendreBinGCD()
+	}
+}
+
+func BenchmarkElementLegendreExp(b *testing.B) {
+	var x Element
+	x.MustSetRandom()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		x.legendreExp()
+	}
+}
+
 func BenchmarkElementMulByConstants(b *testing.B) {
 	b.Run("mulBy3", func(b *testing.B) {
 		benchResElement.MustSetRandom()
@@ -598,9 +628,23 @@ func TestElementLegendre(t *testing.T) {
 
 	genA := gen()
 
-	properties.Property("legendre should output same result than big.Int.Jacobi", prop.ForAll(
+	properties.Property("Legendre should output same result as big.Int.Jacobi", prop.ForAll(
 		func(a testPairElement) bool {
 			return a.element.Legendre() == big.Jacobi(&a.bigint, Modulus())
+		},
+		genA,
+	))
+
+	properties.Property("Legendre should output same result as Euler's criterion", prop.ForAll(
+		func(a testPairElement) bool {
+			return a.element.Legendre() == a.element.legendreExp()
+		},
+		genA,
+	))
+
+	properties.Property("Legendre should output same result as (vanilla) binary GCD", prop.ForAll(
+		func(a testPairElement) bool {
+			return a.element.Legendre() == a.element.legendreBinGCD()
 		},
 		genA,
 	))

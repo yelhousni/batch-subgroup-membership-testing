@@ -147,69 +147,6 @@ func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
 	}
 }
 
-// QuoRem sets z to the Euclidean quotient of x / y, r to the remainder,
-// and guarantees ‖r‖ < ‖y‖ (true Euclidean division in ℤ[ω]).
-func (z *ComplexNumber) QuoRem(x, y, r *ComplexNumber) (*ComplexNumber, *ComplexNumber) {
-
-	norm, rNorm := new(big.Int), new(big.Int)
-	y.Norm(norm) // > 0  (Eisenstein norm is always non-neg)
-	if norm.Sign() == 0 {
-		panic("division by zero")
-	}
-
-	// num = x * ȳ   (ȳ computed in a fresh variable → y unchanged)
-	var yConj ComplexNumber
-	yConj.Conjugate(y)
-	yConj.Mul(x, &yConj)
-
-	// first guess by *symmetric* rounding of both coordinates
-	z.roundNearest(&yConj, norm)
-
-	// r = x – q*y
-	r.Mul(y, z)
-	r.Sub(x, r)
-
-	// If Euclidean inequality already holds we're done.
-	if r.Norm(rNorm).Cmp(norm) < 0 {
-		return z, r
-	}
-
-	// Otherwise walk ≤2 unit steps in the hex lattice until N(r) < N(y).
-	bestNorm := &z.t0
-	bestQ0, bestQ1 := &z.t1, &z.t2
-	a0, a1 := &z.t3, &z.t4
-	a0.Set(&z.A0)
-	a1.Set(&z.A1)
-	bestQ0.Set(a0)
-	bestQ1.Set(a1)
-
-	bestNorm.Set(rNorm) // bestNorm = N(r)
-
-	// six axial directions of the hexagonal lattice
-	// var neighbours = [6][2]int64{
-	// 	{1, 0}, {0, 1}, {-1, 1}, {-1, 0}, {0, -1}, {1, -1},
-	// }
-	var candR ComplexNumber
-	for _, dir := range neighbours {
-		z.A0.Add(a0, dir[0])
-		z.A1.Add(a1, dir[1])
-
-		candR.Mul(y, z)
-		candR.Sub(x, &candR)
-
-		if candR.Norm(rNorm).Cmp(bestNorm) < 0 {
-			bestQ0.Set(&z.A0)
-			bestQ1.Set(&z.A1)
-			r.Set(&candR)
-			bestNorm.Set(rNorm)
-		}
-	}
-	z.A0.Set(bestQ0)
-	z.A1.Set(bestQ1)
-
-	return z, r
-}
-
 // Quo sets z to the Euclidean quotient of x / y
 // and guarantees ‖r‖ < ‖y‖ (true Euclidean division in ℤ[ω]).
 func (z *ComplexNumber) Quo(x, y *ComplexNumber) *ComplexNumber {

@@ -42,6 +42,17 @@ for i in range(10):
     # f_{2,P2}(Q) = x_Q+1
     assert((Q[0]+1)^((p-1)//2) == 1)
 
+w = Fp(u**5 - 3*u**4 + 3*u**3 - u + 1)
+assert(w^3 == 1)
+Q2=E1(-w,0)
+assert(2*Q2 == E1(0))
+for i in range(10):
+    Q = h1*E1.random_point()
+    assert(r*Q == E1(0))
+    assert(Q2.tate_pairing(Q, 2, 1) == 1)
+    # f_{2,Q2}(Q) = x_Q+w
+    assert((Q[0]+w)^((p-1)//2) == 1)
+
 # Check G2-strong
 h2=E2.order()//r
 assert(h2.is_prime())

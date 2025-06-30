@@ -49,11 +49,11 @@ func IsInSubGroupBatch(points []G1Affine, rounds int) bool {
 
 	// 1. Check points are on E[r*e']
 	for i := range points {
-		// 1.1. Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1, with P3 = (-1,0).
+		// 1.1. Tate_{2,P2}(Q) == Tate_{2,P2'}(Q) == 1, with P2 and P2' a basis of E[2].
 		if !isFirstTateOne(points[i]) {
 			return false
 		}
-		// 1.2. Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1, with P3 = (0,1).
+		// 1.2. Tate_{3,P3}(Q) == 1, with P3 of order 3.
 		if !isSecondTateOne(points[i]) {
 			return false
 		}
@@ -69,12 +69,12 @@ func IsInSubGroupBatchParallel(points []G1Affine, rounds int) bool {
 	var nbErrors int64
 	parallel.Execute(len(points), func(start, end int) {
 		for i := start; i < end; i++ {
-			// 1.1. Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1, with P3 = (-1,0).
+			// 1.1. Tate_{2,P2}(Q) == Tate_{2,P2'}(Q) == 1, with P2 and P2' a basis of E[2].
 			if !isFirstTateOne(points[i]) {
 				atomic.AddInt64(&nbErrors, 1)
 				return
 			}
-			// 1.2. Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1, with P3 = (0,1).
+			// 1.2. Tate_{3,P3}(Q) == 1, with P3 of order 3.
 			if !isSecondTateOne(points[i]) {
 				atomic.AddInt64(&nbErrors, 1)
 				return
@@ -90,13 +90,18 @@ func IsInSubGroupBatchParallel(points []G1Affine, rounds int) bool {
 }
 
 // ---- Tate pairings ----
-// isFirstTateOne checks that Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1
-// where P2 = (-1,0) a point of order 2 on the curve
+// isFirstTateOne checks that:
+//
+//	Tate_{2,P2}(Q) = (x+1)^((p-1)/2) == 1
+//	Tate_{2,P2'}(Q) = (x+ω)^((p-1)/2) == 1 with ω^3 = 1 mod p.
+//
+// where P2 = (-1,0) and P2' = (-ω,0) are points of order 2 on the curve.
 func isFirstTateOne(point G1Affine) bool {
-	var tate, one fp.Element
+	var tate1, tate2, one fp.Element
 	one.SetOne()
-	tate.Add(&point.X, &one)
-	return tate.Legendre() == 1
+	tate1.Add(&point.X, &one)
+	tate2.Add(&point.X, &thirdRootOneG1)
+	return tate1.Legendre() == 1 && tate2.Legendre() == 1
 }
 
 // isSecondTateOne checks that Tate_{3,P3}(Q) = (y-1)^((p-1)/3) == 1

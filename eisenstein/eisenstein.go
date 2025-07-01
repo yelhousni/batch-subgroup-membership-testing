@@ -12,20 +12,6 @@ type ComplexNumber struct {
 	_                  sync.Mutex // to ensure there is no accidental value copy
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// helpers – hex-lattice geometry & symmetric rounding
-// ──────────────────────────────────────────────────────────────────────────────
-
-// six axial directions of the hexagonal lattice
-var neighbours = [6][2]*big.Int{
-	{big.NewInt(1), big.NewInt(0)},
-	{big.NewInt(0), big.NewInt(1)},
-	{big.NewInt(-1), big.NewInt(1)},
-	{big.NewInt(-1), big.NewInt(0)},
-	{big.NewInt(0), big.NewInt(-1)},
-	{big.NewInt(1), big.NewInt(-1)},
-}
-
 // String implements Stringer interface for fancy printing
 func (z *ComplexNumber) String() string {
 	return z.A0.String() + "+(" + z.A1.String() + "*ω)"
@@ -65,6 +51,8 @@ func (z *ComplexNumber) Neg(x *ComplexNumber) *ComplexNumber {
 }
 
 // Conjugate sets z to the conjugate of x, and returns z.
+// The conjugate of an Eisenstein integer x₀ + x₁ω is defined as:
+// (x₀ - x₁) - x₁ω
 func (z *ComplexNumber) Conjugate(x *ComplexNumber) *ComplexNumber {
 	z.A0.Sub(&x.A0, &x.A1)
 	z.A1.Neg(&x.A1)
@@ -98,10 +86,34 @@ func (z *ComplexNumber) Mul(x, y *ComplexNumber) *ComplexNumber {
 	z.t2.Add(&x.A0, &x.A1) // t2 = x₀ + x₁
 	z.t3.Add(&y.A0, &y.A1) // t3 = y₀ + y₁
 	z.t2.Mul(&z.t2, &z.t3) // t2 = (x₀ + x₁)(y₀ + y₁)
-	z.A0.Sub(&z.t0, &z.t1) // A0 = x₀y₀ - x₁y₁  (real part)
+
+	z.A0.Sub(&z.t0, &z.t1) // A0 = x₀y₀ - x₁y₁
 	z.t3.Add(&z.t1, &z.t1)
 	z.t3.Add(&z.t3, &z.t0)
-	z.A1.Sub(&z.t2, &z.t3) // A1 = (x₀ + x₁)(y₀ + y₁) - x₀y₀ - x₁y₁ (imaginary part)
+
+	z.A1.Sub(&z.t2, &z.t3) // A1 = (x₀ + x₁)(y₀ + y₁) - x₀y₀ - x₁y₁
+
+	return z
+}
+
+// MulByConjugate sets z to the product of x and the conjugate of y
+//
+//	x * ȳ = (x₀ + x₁ω)((y₀ - y₁) - y₁ω) = (x₀(y₀-y₁) + x₁y₁) + (-x₀y₁ + x₁(y₀-y₁) + x₁y₁)ω
+//								        = (x₀y₀ + x₁y₁ - x₀y₁) + (x₁y₀ - x₀y₁)ω
+func (z *ComplexNumber) MulByConjugate(x, y *ComplexNumber) *ComplexNumber {
+	z.t0.Mul(&x.A1, &y.A0) // t0 = x₁y₀
+	z.t1.Mul(&x.A0, &y.A1) // t1 = x₀y₁
+	z.t2.Add(&x.A0, &x.A1) // t2 = x₀ + x₁
+	z.t3.Add(&y.A0, &y.A1) // t3 = y₀ + y₁
+	z.t2.Mul(&z.t2, &z.t3) // t2 = (x₀ + x₁)(y₀ + y₁) = x₀y₀ + x₁y₁ + x₀y₁ + x₁y₀
+
+	z.A0.Add(&z.t2, &z.t1) // A0 = x₀y₀ + x₁y₁ - x₀y₁ = t2 - t0 - 2t1
+	z.t3.Add(&z.t1, &z.t1)
+	z.t3.Add(&z.t3, &z.t0)
+	z.A0.Sub(&z.t2, &z.t3)
+
+	z.A1.Sub(&z.t0, &z.t1) // A1 = x₁y₀ - x₀y₁ = t0 - t1
+
 	return z
 }
 
@@ -129,8 +141,7 @@ func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
 		z.t1.Add(&num.A0, &z.t0)
 		z.A0.Quo(&z.t1, d)
 	} else {
-		z.t1.Neg(&num.A0)
-		z.t1.Add(&z.t1, &z.t0)
+		z.t1.Sub(&z.t0, &num.A0)
 		z.t1.Quo(&z.t1, d)
 		z.A0.Neg(&z.t1)
 	}
@@ -140,8 +151,7 @@ func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
 		z.t2.Add(&num.A1, &z.t0)
 		z.A1.Quo(&z.t2, d)
 	} else {
-		z.t2.Neg(&num.A1)
-		z.t2.Add(&z.t2, &z.t0)
+		z.t2.Sub(&z.t0, &num.A1)
 		z.t2.Quo(&z.t2, d)
 		z.A1.Neg(&z.t2)
 	}
@@ -151,18 +161,14 @@ func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
 // and guarantees ‖r‖ < ‖y‖ (true Euclidean division in ℤ[ω]).
 func (z *ComplexNumber) Quo(x, y *ComplexNumber) *ComplexNumber {
 
-	norm := new(big.Int)
-	y.Norm(norm) // > 0  (Eisenstein norm is always non-neg)
-	if norm.Sign() == 0 {
-		panic("division by zero")
-	}
+	// x.t0 = Norm(y)
+	y.Norm(&x.t0)
 
-	// num = x * ȳ   (ȳ computed in a fresh variable → y unchanged)
-	z.Conjugate(y)
-	z.Mul(x, z)
+	// z = x * ȳ
+	z.MulByConjugate(x, y)
 
-	// first guess by *symmetric* rounding of both coordinates
-	z.roundNearest(z, norm)
+	// rounding of both coordinates
+	z.roundNearest(z, &x.t0)
 
 	return z
 }

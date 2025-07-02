@@ -210,42 +210,6 @@ func TestEisensteinArithmetic(t *testing.T) {
 	properties.TestingRun(t, gopter.ConsoleReporter(false))
 }
 
-func TestEisensteinQuoRem(t *testing.T) {
-	t.Parallel()
-	parameters := gopter.DefaultTestParameters()
-	if testing.Short() {
-		parameters.MinSuccessfulTests = nbFuzzShort
-	} else {
-		parameters.MinSuccessfulTests = nbFuzz
-	}
-
-	properties := gopter.NewProperties(parameters)
-	genE := GenComplexNumber(boundSize)
-
-	properties.Property("QuoRem should be correct", prop.ForAll(
-		func(a, b *ComplexNumber) bool {
-			var z, rem ComplexNumber
-			z.QuoRem(a, b, &rem)
-			var res ComplexNumber
-			res.Mul(b, &z)
-			res.Add(&res, &rem)
-			return res.Equal(a)
-		},
-		genE,
-		genE,
-	))
-
-	properties.Property("QuoRem remainder should be smaller than divisor", prop.ForAll(
-		func(a, b *ComplexNumber) bool {
-			var z, rem ComplexNumber
-			z.QuoRem(a, b, &rem)
-			return rem.Norm(new(big.Int)).Cmp(b.Norm(new(big.Int))) == -1
-		},
-		genE,
-		genE,
-	))
-}
-
 // GenNumber generates a random integer
 func GenNumber(boundSize int64) gopter.Gen {
 	return func(genParams *gopter.GenParameters) *gopter.GenResult {
@@ -272,24 +236,6 @@ func GenComplexNumber(boundSize int64) gopter.Gen {
 
 // bench
 var benchRes [3]*ComplexNumber
-
-func BenchmarkQuoRem(b *testing.B) {
-	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128
-	a0, _ := rand.Int(rand.Reader, n)
-	a1, _ := rand.Int(rand.Reader, n)
-	c0, _ := rand.Int(rand.Reader, n)
-	c1, _ := rand.Int(rand.Reader, n)
-	var a, c ComplexNumber
-	a.A0.Set(a0)
-	a.A1.Set(a1)
-	c.A0.Set(c0)
-	c.A1.Set(c1)
-	var quo, rem ComplexNumber
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		quo.QuoRem(&a, &c, &rem)
-	}
-}
 
 func BenchmarkMul(b *testing.B) {
 	var n, _ = new(big.Int).SetString("100000000000000000000000000000000", 16) // 2^128

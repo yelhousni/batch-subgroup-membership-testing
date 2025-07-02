@@ -1,15 +1,16 @@
 package eisenstein
 
 import (
+	"math"
 	"math/big"
 	"sync"
 )
 
 // A ComplexNumber represents an arbitrary-precision Eisenstein integer.
 type ComplexNumber struct {
-	A0, A1             big.Int
-	t0, t1, t2, t3, t4 big.Int    // temporary variables
-	_                  sync.Mutex // to ensure there is no accidental value copy
+	A0, A1         big.Int
+	t0, t1, t2, t3 big.Int    // temporary variables
+	_              sync.Mutex // to ensure there is no accidental value copy
 }
 
 // String implements Stringer interface for fancy printing
@@ -131,30 +132,58 @@ func (z *ComplexNumber) Norm(norm *big.Int) *big.Int {
 	return norm
 }
 
-// roundNearest sets z to the coordinate-wise nearest integer division of num/d,
-// using symmetric rounding (round half away from zero).
 func (z *ComplexNumber) roundNearest(num *ComplexNumber, d *big.Int) {
-	z.t0.Rsh(d, 1) // z.t0 = d / 2
+	z.t1.Abs(d)
+	dBitLen := z.t1.BitLen()
 
-	// Round A0 coordinate
-	if num.A0.Sign() >= 0 {
-		z.t1.Add(&num.A0, &z.t0)
-		z.A0.Quo(&z.t1, d)
-	} else {
-		z.t1.Sub(&z.t0, &num.A0)
-		z.t1.Quo(&z.t1, d)
-		z.A0.Neg(&z.t1)
+	// Helper function for rounding one component
+	roundComp := func(result, comp *big.Int) {
+		isNegativeResult := (comp.Sign() < 0) != (d.Sign() < 0)
+		z.t0.Abs(comp)
+
+		// Bit length shortcut before full comparison
+		t0BitLen := z.t0.BitLen()
+		if t0BitLen < dBitLen || (t0BitLen == dBitLen && z.t0.Cmp(&z.t1) < 0) {
+			// |a| < |b|
+			z.t2.Lsh(&z.t0, 1) // t2 = 2 * |a|
+			if z.t2.BitLen() > dBitLen || (z.t2.BitLen() == dBitLen && z.t2.Cmp(&z.t1) >= 0) {
+				if isNegativeResult {
+					result.SetInt64(-1)
+				} else {
+					result.SetInt64(1)
+				}
+			} else {
+				result.SetInt64(0)
+			}
+		} else {
+			// division and rounding
+			z.t2.Set(&z.t0) // remainder = |a|
+			k := t0BitLen - dBitLen
+			z.t3.Lsh(&z.t1, uint(k))
+			if z.t3.Cmp(&z.t0) > 0 {
+				k--
+			}
+			result.SetInt64(0)
+			for i := k; i >= 0; i-- {
+				z.t3.Lsh(&z.t1, uint(i))
+				if z.t2.Cmp(&z.t3) >= 0 {
+					z.t2.Sub(&z.t2, &z.t3)
+					result.SetBit(result, i, 1)
+				}
+			}
+			z.t3.Lsh(&z.t2, 1)
+			if z.t3.Cmp(&z.t1) >= 0 {
+				increment(result)
+			}
+			if isNegativeResult {
+				result.Neg(result)
+			}
+		}
 	}
 
-	// Round A1 coordinate
-	if num.A1.Sign() >= 0 {
-		z.t2.Add(&num.A1, &z.t0)
-		z.A1.Quo(&z.t2, d)
-	} else {
-		z.t2.Sub(&z.t0, &num.A1)
-		z.t2.Quo(&z.t2, d)
-		z.A1.Neg(&z.t2)
-	}
+	// Round both components
+	roundComp(&z.A0, &num.A0)
+	roundComp(&z.A1, &num.A1)
 }
 
 // Quo sets z to the Euclidean quotient of x / y
@@ -171,4 +200,17 @@ func (z *ComplexNumber) Quo(x, y *ComplexNumber) *ComplexNumber {
 	z.roundNearest(z, &x.t0)
 
 	return z
+}
+
+var one = big.NewInt(1)
+
+func increment(z *big.Int) {
+	if z.Sign() > 0 {
+		zBits := z.Bits()
+		if zBits[0] < math.MaxUint64 {
+			zBits[0] = big.Word(uint64(zBits[0]) + 1)
+			return
+		}
+	}
+	z.Add(z, one)
 }

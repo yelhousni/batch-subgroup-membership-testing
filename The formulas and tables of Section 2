@@ -1,0 +1,246 @@
+NAF := function(z)
+    m := AbsoluteValue(z);
+    naf := [];
+    w := 0;
+
+    while m gt 0 do
+       if IsOdd(m) then
+           u := 2 - (m mod 4);
+           Insert(~naf, 1, u);
+           m := m - u;
+           w := w + 1;
+       else
+           Insert(~naf, 1, 0);
+       end if;
+       m := m div 2;
+    end while;
+
+    if z lt 0 then
+        for i := 1 to #naf do
+            naf[i] := -naf[i];
+        end for;
+    end if;
+
+    n := 0;
+    s := "";
+    for i := 1 to #naf do
+        n := 2*n;
+        n := n + naf[i];
+
+        e := IntegerToString(#naf - i);
+        if naf[i] eq 1 then
+            if s eq "" then
+                s := "2^" cat e;
+            else
+                s := s cat " + 2^" cat e;
+            end if;
+        end if;
+        if naf[i] eq -1 then
+            if s eq "" then
+                s := "-2^" cat e;
+            else
+                s := s cat " - 2^" cat e;
+            end if;
+        end if;
+    end for;
+
+    assert(n eq z);
+    return s, w;
+end function;
+
+////////////////////////////
+
+// BLS12-377
+z := 0x8508c00000000001;
+// BLS12-380
+// z := 0xb504f33499580000;
+// BLS12-381
+// z := -0xd201000000010000; 
+// BLS12-383
+// z := 0x10008000001001200;
+
+// Guillevic-Masson's curves
+// z := 0x9ffc012000000001;
+// z := -0xff97ffdfffffffff;
+// z := 0x87fbc01000000001;
+// z := 0x80067fff00000001;
+// z := 0xffff007fda000001;
+// z := 0xfc3ec00400000001;
+// z := -0xef000ffefdffffff;
+// z := 0xdf07fffdfc000001;
+
+// BLS12-461
+// z := -0x2080ffffffd7ffc00020;
+// New curve BLS12-376
+// z := -1008476051 * 2^33 - 1;
+// New curve BLS12-377
+// z := -555684677407 * 2^24 - 1;
+
+///////////////////////////
+
+e := AbsoluteValue(z-1);
+assert e mod 3 eq 0;
+printf"Round(Log(2, e)) = %o\n", Round(Log(2, e));
+e1 := e div 3;
+h1 := 3*e1^2;
+r := z^4 - z^2 + 1;
+q := h1*r + z;
+h2 := (z^8 - 4*z^7 + 5*z^6 - 4*z^4 + 6*z^3 - 4*z^2 - 4*z + 13) div 9;
+hT := (z^20 - 8*z^19 + 25*z^18 - 32*z^17 - 8*z^16 + 76*z^15 - 93*z^14 + 36*z^13 +
+        51*z^12 - 112*z^11 + 86*z^10 - 16*z^9 - 24*z^8 + 84*z^7 - 90*z^6 +
+        28*z^5 - 14*z^4 - 38*z^3 + 70*z^2 - 14*z + 73) div 81;
+
+assert IsPrime(r);
+assert IsPrime(q);
+printf"Ceiling(Log(2, r)) = %o\n", Ceiling(Log(2, r));
+printf"Ceiling(Log(2, q)) = %o\n", Ceiling(Log(2, q));
+naf, w := NAF(z);
+printf"NAF(z) = %o\n", naf;
+printf"w = %o\n\n", w;
+
+fac := Factorization(e1);
+printf"Factorization(e1) = %o\n", fac;
+L := [];
+for i := 1 to #fac do
+    Append(~L, Ceiling( Log(2, fac[i][1]) ) );
+end for;
+printf"The lengths of the prime factors of e1 = %o\n", L;
+pi := 2^4 * 3^2 * 5*7*11*13;
+printf"Round(Log(2, pi)) = %o\n", Round(Log(2, pi));
+piPr := GCD(e, pi);
+printf"Factorization(piPr/3) = %o\n", Factorization(piPr div 3);
+ePr := e div piPr;
+fac := Factorization(ePr);
+p := fac[1][1];
+printf"p = %o\n", p;
+
+mu := 60;
+m := p;
+// m := 2^Floor(Log(2, p));
+printf"m = %o\n", m;
+n := Ceiling(mu / Log(2, m));
+printf"n = %o\n\n", n;
+ 
+printf"IsPrime(h2 : Proof := false) = %o\n", IsPrime(h2 : Proof := false);
+printf"IsPrime(hT : Proof := false) = %o\n", IsPrime(hT : Proof := false);
+TD, sec := TrialDivision(h2);
+if sec eq [] then
+    TD := [];
+end if;
+printf"The prime divisors of h2 up to 10000 = %o\n", TD;
+TD, sec := TrialDivision(hT); 
+if sec eq [] then
+    TD := [];
+end if;
+printf"The prime divisors of hT up to 10000 = %o\n\n", TD;
+
+r1Pr := z^4 - 3*z^2 + 3;
+printf"IsPrime(r1Pr) = %o\n", IsPrime(r1Pr);
+printf"Ceiling(Log(2, r1Pr)) = %o\n", Ceiling(Log(2, r1Pr));
+printf"v2*(q) = %o\n", Valuation(q-1, 2);
+printf"v2*(r) = %o\n", Valuation(r-1, 2);
+printf"v2*(r1Pr) = %o", Valuation(r1Pr-1, 2);
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+Q := Rationals();
+PR<z> := PolynomialRing(Q);
+e1 := (z-1)/3;
+h1 := 3*e1^2;
+r := z^4 - z^2 + 1;
+q := h1*r + z;
+Phi12 := q^4 - q^2 + 1;
+assert Phi12 mod r eq 0;
+hT := Phi12 div r;
+
+printf"The factorization of r-1:\n";
+Factorization(r-1);
+printf"\nThe factorization and leading coefficient of q-1:\n";
+fac, coef := Factorization(q-1);
+fac; coef;
+printf"\nThe factorization and leading coefficient of hT:\n";
+fac, coef := Factorization(hT);
+fac; coef;
+
+r1Pr := z^4 - 3*z^2 + 3;
+r2Pr := z^4 + 3;
+r3Pr := z^4 - 2*z^2 + 4;
+printf"\nThe factorization of r1Pr-1:\n";
+Factorization(r1Pr-1);
+printf"\nThe factorization of r2Pr-1:\n";
+Factorization(r2Pr-1);
+printf"\nThe factorization of r3Pr-1:\n";
+Factorization(r3Pr-1);
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+// Embedded curve for BLS12-377
+r := 0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001;
+rPr := 0x4aad957a68b2955982d1347970dec005293a3afc43c8afeb95aee9ac33fd9ff;
+h := 4;
+a2 := -3020;
+a4 := 2283121;
+a6 := 0;
+
+// Embedded curves for BLS12-381
+// Jubjub
+r := 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001;
+rPr := 0xe7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7;
+h := 8;
+a2 := 40962;
+a4 := 1;
+a6 := 0;
+
+// Bandersnatch
+r := 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001;
+rPr := 0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1;
+h := 4;
+a2 := 0;
+a4 := -3763200000;
+a6 := -78675968000000;
+
+// Guillevic-Masson's prime-order curve
+r := 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001;
+rPr := 0x73eda753299d7d483339d80809a1d80496b5714d26546fcc43d6b3e6dd7e79ed;
+h := 1;
+a2 := 0;
+a4 := -3;
+a6 := 0x181db5d04907341a0a65de398d54bad311b5cf755ded77e2b1e865971c5d3bd4;
+
+//////////////////////////////////////////
+
+// Common section
+printf"Ceiling(Log(2, r)) = %o\n", Ceiling(Log(2, r));
+printf"Ceiling(Log(2, rPr)) = %o\n", Ceiling(Log(2, rPr));
+assert IsPrime(r);
+assert IsPrime(rPr);
+Fr := GF(r);
+Ee := EllipticCurve([Fr | 0, a2, 0, a4, a6]);
+Ne := rPr*h;
+assert Order(Ee) eq Ne;
+printf"Valuation(rPr-1, 2) = %o\n", Valuation(rPr-1, 2);
+
+te := r + 1 - Ne;
+D := te^2 - 4*r;
+D := SquarefreeFactorization(D);
+if D mod 4 ne 1 then
+    D := 4*D;
+end if;
+printf"Factorization(D) = %o\n", Factorization(D); 
+printf"Round(Log(2, -D)) = %o", Round(Log(2, -D));

@@ -7,7 +7,7 @@ from sage.rings.finite_rings.finite_field_constructor import FiniteField, GF
 def NAF(x: int):
     """
     :param x: integer x
-    :return: list corresponding to the NAF represnetation of x
+    :return: list corresponding to the NAF representation of x
     """
     t0 = time.time()
 

@@ -76,7 +76,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFp(),
 	))
 
-	properties.Property("[BLS12-377] IsInSubGroupBatch test should pass with probability 1-1/2^64", prop.ForAll(
+	properties.Property("[BLS12-377] IsInSubGroupBatch test should pass with high probability", prop.ForAll(
 		func(mixer fr.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -95,7 +95,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-377] IsInSubGroupBatch test should not pass", prop.ForAll(
+	properties.Property("[BLS12-377] IsInSubGroupBatch test should not pass with high probability", prop.ForAll(
 		func(mixer fr.Element, a fp.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element

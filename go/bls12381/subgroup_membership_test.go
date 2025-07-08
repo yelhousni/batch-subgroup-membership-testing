@@ -83,7 +83,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFp(),
 	))
 
-	properties.Property("[BLS12-381] IsInSubGroupBatch test should pass with probability 1-1/2^64", prop.ForAll(
+	properties.Property("[BLS12-381] IsInSubGroupBatch test should pass with high probability", prop.ForAll(
 		func(mixer fr.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -102,7 +102,7 @@ func TestIsInSubGroupBatch(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-381] IsInSubGroupBatch test should not pass", prop.ForAll(
+	properties.Property("[BLS12-381] IsInSubGroupBatch test should not pass with high probability", prop.ForAll(
 		func(mixer fr.Element, a fp.Element) bool {
 			// mixer ensures that all the words of a frElement are set
 			var sampleScalars [nbSamples]fr.Element
@@ -153,7 +153,7 @@ func TestTatePairings(t *testing.T) {
 		GenFr(),
 	))
 
-	properties.Property("[BLS12-381] Tate(P11,Q) should be 1", prop.ForAll(
+	properties.Property("[BLS12-381] Tate(P11,Q) and Tate(P'11,Q) should both be 1", prop.ForAll(
 		func(a fr.Element) bool {
 			var s big.Int
 			a.BigInt(&s)
@@ -178,7 +178,7 @@ func TestElementCubicSymbol(t *testing.T) {
 
 	properties := gopter.NewProperties(parameters)
 
-	properties.Property("IsCubicResidue should output same result than Exp by (p-1)/3", prop.ForAll(
+	properties.Property("IsCubicResidue should output same result as Exp by (p-1)/3", prop.ForAll(
 		func(a fp.Element) bool {
 			var exp big.Int
 			exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))

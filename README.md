@@ -5,7 +5,7 @@ Related code to the research paper "Batch subgroup membership testing on pairing
 *Authors: [Dimitri Koshelev](https://github.com/Dimitri-Koshelev), [Youssef El Housni](https://github.com/yelhousni) and [Georgios Fotiadis](https://github.com/gfotiadis).*
 
 ## Pre-requisites
-Install Golang (https://go.dev/doc/install). This code was tested with the last 2 major releases of Go (currently 1.23 and 1.22).
+Install Golang (https://go.dev/doc/install). This code was tested with the releases 1.23 and 1.22.
 
 The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang library.
 

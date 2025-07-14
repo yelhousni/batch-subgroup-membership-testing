@@ -24,7 +24,7 @@ for i in range(10):
     # f_{3,P3}(Q) = y_Q-2
     assert((Q[1]-2)^((p-1)//3) == 1)
 
-P=E1(4, Fp(4^3+4).sqrt())
+P=E1(5, Fp(5^3+4).sqrt())
 P11=(P.order()//11)*P
 assert(11*P11 == E1(0))
 for i in range(10):
@@ -58,7 +58,7 @@ for i in range(10):
     assert(f1xy(Q[0],Q[1])^((p-1)//11) == 1)
     assert(f2xy(Q[0],Q[1])^((p-1)//11) == 1)
 
-P=E1(5, Fp(5^3+4).sqrt())
+P=E1(6, Fp(6^3+4).sqrt())
 P11=(P.order()//11)*P
 assert(11*P11 == E1(0))
 for i in range(10):

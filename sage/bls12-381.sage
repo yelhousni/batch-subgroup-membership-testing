@@ -24,7 +24,7 @@ for i in range(10):
     # f_{3,P3}(Q) = y_Q-2
     assert((Q[1]-2)^((p-1)//3) == 1)
 
-P=E1(5, Fp(5^3+4).sqrt())
+P=E1(4, Fp(4^3+4).sqrt())
 P11=(P.order()//11)*P
 assert(11*P11 == E1(0))
 for i in range(10):
@@ -49,6 +49,18 @@ v_2P = x - Q2[0]
 v_4P = x - Q4[0]
 v_5P = x - Q5[0]
 
+# print(hex(l_PP[1,0]))
+# print(hex(l_PP[0,0]))
+# print(hex(l_4PP[1,0]))
+# print(hex(l_4PP[0,0]))
+# print(hex(l_2P2P[1,0]))
+# print(hex(l_2P2P[0,0]))
+# print(hex(l_5P5P[1,0]))
+# print(hex(l_5P5P[0,0]))
+# print(hex(v_2P[0,0]))
+# print(hex(v_4P[0,0]))
+# print(hex(v_5P[0,0]))
+
 f1xy = (l_PP/v_2P)^4 * (l_4PP/v_5P * l_2P2P/v_4P)^2 * l_5P5P
 f2xy = ((l_PP)^4 * (l_4PP * l_2P2P)^2 * l_5P5P) * (v_2P^4 * (v_4P * v_5P)^2)^10
 for i in range(10):
@@ -58,7 +70,7 @@ for i in range(10):
     assert(f1xy(Q[0],Q[1])^((p-1)//11) == 1)
     assert(f2xy(Q[0],Q[1])^((p-1)//11) == 1)
 
-P=E1(6, Fp(6^3+4).sqrt())
+P=E1(5, Fp(5^3+4).sqrt())
 P11=(P.order()//11)*P
 assert(11*P11 == E1(0))
 for i in range(10):

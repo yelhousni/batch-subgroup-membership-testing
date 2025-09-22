@@ -1,8 +1,6 @@
 # Batch subgroup membership testing
 
-Related code to the research paper "Batch subgroup membership testing on pairing-friendly curves", [e-print 2025/1311](https://eprint.iacr.org/2025/1311).
-
-*Authors: [Dimitri Koshelev](https://github.com/Dimitri-Koshelev), [Youssef El Housni](https://github.com/yelhousni) and [Georgios Fotiadis](https://github.com/gfotiadis).*
+Related code to the research paper "Batch subgroup membership testing on pairing-friendly curves".
 
 ## Pre-requisites
 Install Golang (https://go.dev/doc/install). This code was tested with the last 2 major releases of Go (currently 1.23 and 1.22).

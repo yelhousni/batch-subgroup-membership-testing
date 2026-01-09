@@ -97,9 +97,20 @@ var lines1, lines2 [7]line
 var a, b big.Int
 var beta eisenstein.ComplexNumber
 var two_p fp.Element
-var one, mone, three, mInt big.Int
+var one, mone, three big.Int
+var wordPow2Mod9 uint64
+var betaTermMMod9 uint64
+var betaTermNMod9 uint64
 
 func init() {
+	// Cache 2^W mod 9 for mod9()
+	switch unsafe.Sizeof(big.Word(0)) {
+	case 4: // uint32
+		wordPow2Mod9 = 4
+	case 8: // uint64
+		wordPow2Mod9 = 7
+	}
+
 	// P = (
 	// 	   0x1147c19050b3c4b663a4ca29c4859eeb1ac05a91659009602e7443347ad659e9f838f4ed07337c4c6d3a48d612b4bb92,
 	// 	   0x8d7c25237c7dcea6ea0c6c37053882c59cc0ee424b3545bb25116d53e383574063149edb438b959dd169d0e01b2d3bc,
@@ -158,6 +169,14 @@ func init() {
 	mone.Neg(&one)
 	three.SetUint64(3)
 
+	// Precompute mod-9 terms for the cubic symbol exponent.
+	var betaA0Sq, betaA0A1 big.Int
+	betaA0Sq.Mul(&beta.A0, &beta.A0)
+	betaA0A1.Mul(&beta.A0, &beta.A1)
+	betaA0SqMod9 := mod9(&betaA0Sq)
+	betaA0A1Mod9 := mod9(&betaA0A1)
+	betaTermMMod9 = mod9Int(1 - int64(betaA0SqMod9))
+	betaTermNMod9 = mod9Int(int64(betaA0SqMod9) - int64(betaA0A1Mod9) - 1)
 }
 
 // expByp11 uses a short addition chain to compute x^p11 where p11=(p-1)/11 .
@@ -665,7 +684,6 @@ func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {
 
 func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumber {
 	var result, gamma eisenstein.ComplexNumber
-	var q0 big.Int
 	result.SetOne()
 
 	for {
@@ -694,11 +712,11 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		// 		(γ / (1-ω))[0] = (2γ[0] - γ[1]) / 3
 		// 		(γ / (1-ω))[1] = (γ[0] + γ[1]) / 3
 		m := uint64(0)
-		alpha.A1.Add(&gamma.A0, &gamma.A1)
-		r1 := mod3(&alpha.A1)
+		r1 := mod3AbsSum(&gamma.A0, &gamma.A1)
 
 		// the result is integral iff γ[0] + γ[1] = 0 mod 3
 		for r1 == 0 {
+			alpha.A1.Add(&gamma.A0, &gamma.A1)
 			alpha.A0.Add(&gamma.A0, &gamma.A0).
 				Sub(&alpha.A0, &gamma.A1)
 			gamma.A0.Quo(&alpha.A0, &three)
@@ -706,8 +724,7 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 
 			m++
 
-			alpha.A1.Add(&gamma.A0, &gamma.A1)
-			r1 = mod3(&alpha.A1)
+			r1 = mod3AbsSum(&gamma.A0, &gamma.A1)
 		}
 
 		// Make primary:
@@ -718,58 +735,32 @@ func cubicSymbol(alpha, beta *eisenstein.ComplexNumber) *eisenstein.ComplexNumbe
 		// 		γ[1] - γ[0] - ω * γ[0]
 		// 		-γ[1] - ω * (γ[0] - γ[1])
 		n := 0
-		alpha.A1.Sub(&gamma.A0, &gamma.A1)
 		r0 := mod3(&gamma.A0)
-		r1 = mod3(&alpha.A1)
+		r1 = mod3AbsDiff(&gamma.A0, &gamma.A1)
 		if r0 == 0 {
 			n = 1
+			alpha.A1.Sub(&gamma.A0, &gamma.A1)
 			gamma.A1.Neg(&gamma.A0)
 			gamma.A0.Neg(&alpha.A1)
 		} else if r1 == 0 {
 			n = 2
+			alpha.A1.Sub(&gamma.A0, &gamma.A1)
 			gamma.A0.Neg(&gamma.A1)
 			gamma.A1.Set(&alpha.A1)
 		}
 
 		// Compute ω^exp, where
 		// 		exp = ( n * (β[0]^2 − β[0]*β[1] − 1) + m * (1 - β[0]^2) ) / 3
-
-		// m can be arbitrary but we specialize cases for m = 0, 1, 2.
-		alpha.A1.Mul(&beta.A0, &beta.A0)
-		switch m {
-		case 0:
-			q0.SetUint64(0)
-		case 1:
-			q0.Sub(&one, &alpha.A1)
-		case 2:
-			q0.Sub(&one, &alpha.A1).Add(&q0, &q0)
-		default:
-			mInt.SetUint64(m)
-			q0.Sub(&one, &alpha.A1).Mul(&q0, &mInt)
-		}
-
-		// n can only be {0,1,2}
-		switch n {
-		case 0:
-			// nada
-		case 1:
-			alpha.A0.Mul(&beta.A0, &beta.A1)
-			increment(&alpha.A0)
-			alpha.A0.Sub(&alpha.A1, &alpha.A0)
-			q0.Add(&alpha.A0, &q0)
-		case 2:
-			alpha.A0.Mul(&beta.A0, &beta.A1)
-			increment(&alpha.A0)
-			alpha.A0.Sub(&alpha.A1, &alpha.A0).Add(&alpha.A0, &alpha.A0)
-			q0.Add(&alpha.A0, &q0)
-		default:
+		if n < 0 || n > 2 {
 			panic("unexpected value for n in cubic symbol computation")
 		}
+		mMod9 := m % 9
+		q0mod9 := (mMod9*betaTermMMod9 + uint64(n)*betaTermNMod9) % 9
 
 		// Multiply the result by one of 1, ω, ω^2.
 		//
 		// We avoid dividing exp by 3 and switch on the value of exp mod 9.
-		r0 = mod9(&q0)
+		r0 = q0mod9
 		switch r0 {
 		case 0:
 			// muliply the result by 1
@@ -802,35 +793,89 @@ func mod3(z *big.Int) uint64 {
 	return sumOfLimbsMod3
 }
 
+func cmpAbs(x, y *big.Int) int {
+	xb := x.Bits()
+	yb := y.Bits()
+	if len(xb) != len(yb) {
+		if len(xb) > len(yb) {
+			return 1
+		}
+		return -1
+	}
+	if len(xb) == 0 {
+		return 0
+	}
+	for i := len(xb) - 1; i >= 0; i-- {
+		if xb[i] == yb[i] {
+			continue
+		}
+		if xb[i] > yb[i] {
+			return 1
+		}
+		return -1
+	}
+	return 0
+}
+
+func mod3AbsSum(x, y *big.Int) uint64 {
+	if x.Sign() == 0 {
+		return mod3(y)
+	}
+	if y.Sign() == 0 {
+		return mod3(x)
+	}
+	mx := mod3(x)
+	my := mod3(y)
+	if x.Sign() == y.Sign() {
+		return (mx + my) % 3
+	}
+	if cmpAbs(x, y) >= 0 {
+		return (mx + 3 - my) % 3
+	}
+	return (my + 3 - mx) % 3
+}
+
+func mod3AbsDiff(x, y *big.Int) uint64 {
+	if x.Sign() == 0 {
+		return mod3(y)
+	}
+	if y.Sign() == 0 {
+		return mod3(x)
+	}
+	mx := mod3(x)
+	my := mod3(y)
+	if x.Sign() != y.Sign() {
+		return (mx + my) % 3
+	}
+	if cmpAbs(x, y) >= 0 {
+		return (mx + 3 - my) % 3
+	}
+	return (my + 3 - mx) % 3
+}
+
+func mod9Int(v int64) uint64 {
+	v %= 9
+	if v < 0 {
+		v += 9
+	}
+	return uint64(v)
+}
+
 func mod9(z *big.Int) uint64 {
 	limbs := z.Bits()
 	var sumOfLimbsMod9 uint64
 
-	// Determine the effective power of 2 for each limb based on Word size
-	// big.Word is an unsigned integer type for a machine word.
-	// We need 2^WordSize % 9
-	var wordPow2Mod9 uint64
-
-	switch unsafe.Sizeof(big.Word(0)) {
-	case 4: // uint32
-		// 2^32 % 9
-		// 32 = 6*5 + 2
-		// 2^32 = (2^6)^5 * 2^2
-		// (2^6 % 9)^5 * 2^2 % 9
-		// (1)^5 * 4 % 9 = 4 % 9 = 4
-		wordPow2Mod9 = 4
-	case 8: // uint64
-		// 2^64 % 9
-		// 64 = 6*10 + 4
-		// 2^64 = (2^6)^10 * 2^4
-		// (2^6 % 9)^10 * 2^4 % 9
-		// (1)^10 * 16 % 9 = 16 % 9 = 7
-		wordPow2Mod9 = 7
-	default:
-		// Fallback for unexpected big.Word size, though highly unlikely
-		// This path would indicate a very unusual or non-standard Go compilation.
-		// In a real-world scenario, you might want to panic or use z.Mod directly.
-		return z.Mod(z, big.NewInt(9)).Uint64()
+	// Determine the effective power of 2 for each limb based on Word size.
+	// wordPow2Mod9 is cached at init; fallback if it's unset.
+	if wordPow2Mod9 == 0 {
+		switch unsafe.Sizeof(big.Word(0)) {
+		case 4: // uint32
+			wordPow2Mod9 = 4
+		case 8: // uint64
+			wordPow2Mod9 = 7
+		default:
+			return z.Mod(z, big.NewInt(9)).Uint64()
+		}
 	}
 
 	currentMultiplier := uint64(1) // Represents (2^W)^i % 9 for the current limb

@@ -15,8 +15,7 @@ import (
 func isFirstTateOne(point curve.G1Affine) bool {
 	var tate fp.Element
 	tate.Sub(&point.Y, &two_p)
-	tate = expByp3(tate)
-	return tate.IsOne()
+	return IsCubicResidueFast(&tate)
 }
 
 // isSecondTateOne checks that Tate_{11,P11}(Q) == Tate_{11,P'11}(Q) == 1
@@ -668,7 +667,7 @@ func expByp11(x fp.Element) fp.Element {
 }
 
 func IsCubicResidue(x *fp.Element) bool {
-	return CubicSymbol(*x).A0.Cmp(&one) == 0
+	return IsCubicResidueFast(x)
 }
 
 func CubicSymbol(x fp.Element) *eisenstein.ComplexNumber {

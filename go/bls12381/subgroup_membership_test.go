@@ -203,6 +203,16 @@ func BenchmarkCubicSymbolEisensteinGCD(b *testing.B) {
 	}
 }
 
+func BenchmarkCubicSymbolFast(b *testing.B) {
+	var m fp.Element
+	m.SetString("2929494998551518193999723405412053246602204569353345363675794262224468384146017685416659704346369932930853282892458")
+
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		CubicSymbolFast(m)
+	}
+}
+
 func BenchmarkCubicSymbolExpBigInt(b *testing.B) {
 	var m fp.Element
 	m.SetString("2929494998551518193999723405412053246602204569353345363675794262224468384146017685416659704346369932930853282892458")

@@ -8,6 +8,9 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 )
 
+// 3⁻¹ mod 2⁶⁴, used for exact division by 3 via multiplication.
+const inv3mod264 = 0xAAAAAAAAAAAAAAAB
+
 // signed256 represents a signed 256-bit integer using 4 uint64 words.
 type signed256 struct {
 	w0, w1, w2, w3 uint64
@@ -127,12 +130,24 @@ func mod9_256(s signed256) uint64 {
 	return v
 }
 
-// divExact3_256 divides s by 3 exactly (assumes s ≡ 0 mod 3).
+// divExact3_256 divides s by 3 exactly using multiplicative inverse.
 func divExact3_256(s signed256) signed256 {
-	q3, r3 := bits.Div64(0, s.w3, 3)
-	q2, r2 := bits.Div64(r3, s.w2, 3)
-	q1, r1 := bits.Div64(r2, s.w1, 3)
-	q0, _ := bits.Div64(r1, s.w0, 3)
+	q0 := s.w0 * inv3mod264
+	c0, _ := bits.Mul64(q0, 3)
+
+	sub1, borrow1 := bits.Sub64(s.w1, c0, 0)
+	q1 := sub1 * inv3mod264
+	c1, _ := bits.Mul64(q1, 3)
+	c1 += borrow1
+
+	sub2, borrow2 := bits.Sub64(s.w2, c1, 0)
+	q2 := sub2 * inv3mod264
+	c2, _ := bits.Mul64(q2, 3)
+	c2 += borrow2
+
+	sub3, _ := bits.Sub64(s.w3, c2, 0)
+	q3 := sub3 * inv3mod264
+
 	return signed256{q0, q1, q2, q3, s.neg}
 }
 
@@ -245,9 +260,12 @@ func mod9_128(s signed128) uint64 {
 	return v
 }
 
+// divExact3_128 divides s by 3 exactly using multiplicative inverse.
 func divExact3_128(s signed128) signed128 {
-	q1, r1 := bits.Div64(0, s.hi, 3)
-	q0, _ := bits.Div64(r1, s.lo, 3)
+	q0 := s.lo * inv3mod264
+	c0, _ := bits.Mul64(q0, 3)
+	sub1, _ := bits.Sub64(s.hi, c0, 0)
+	q1 := sub1 * inv3mod264
 	return signed128{q0, q1, s.neg}
 }
 
@@ -290,7 +308,8 @@ func divBy1MinusOmega128(e, f *signed128) {
 
 func makePrimaryEis128(e, f *signed128) int {
 	r0 := mod3_128(*e)
-	r1 := mod3_128(sub128(*e, *f))
+	// mod3(e-f) = (mod3(e) + 3 - mod3(f)) % 3
+	r1 := (r0 + 3 - mod3_128(*f)) % 3
 
 	if r0 == 0 {
 		newE := sub128(*f, *e)
@@ -400,7 +419,8 @@ func divBy1MinusOmega256(e, f *signed256) {
 // Modifies e, f in place to the primary associate. Returns n.
 func makePrimaryEis256(e, f *signed256) int {
 	r0 := mod3_256(*e)
-	r1 := mod3_256(sub256(*e, *f))
+	// mod3(e-f) = (mod3(e) + 3 - mod3(f)) % 3
+	r1 := (r0 + 3 - mod3_256(*f)) % 3
 
 	if r0 == 0 {
 		// n=1: multiply by ω² → (f-e) + (-e)·ω
@@ -514,7 +534,7 @@ func cubicCorrection(b0, b1 signed256, m uint64, n int) int {
 // CubicSymbolFast computes the cubic residue symbol of x modulo the BLS12-381
 // Eisenstein prime using a two-phase approach:
 //   - Phase 1: one big.Int Euclidean step to reduce from ~381 bits to ~192 bits
-//   - Phase 2: Eisenstein GCD loop using fixed-width signed256 arithmetic
+//   - Phase 2: Eisenstein GCD loop using fixed-width signed256/signed128 arithmetic
 //
 // Returns 0 (symbol=1, cubic residue), 1 (symbol=ω), or 2 (symbol=ω²).
 func CubicSymbolFast(x fp.Element) uint8 {
@@ -562,7 +582,7 @@ func CubicSymbolFast(x fp.Element) uint8 {
 	result := uint64(0)
 
 	m := uint64(0)
-	for mod3_256(add256(e0, e1)) == 0 {
+	for (mod3_256(e0)+mod3_256(e1))%3 == 0 {
 		divBy1MinusOmega256(&e0, &e1)
 		m++
 	}
@@ -600,7 +620,7 @@ func CubicSymbolFast(x fp.Element) uint8 {
 		}
 
 		m = 0
-		for mod3_256(add256(e0, e1)) == 0 {
+		for (mod3_256(e0)+mod3_256(e1))%3 == 0 {
 			divBy1MinusOmega256(&e0, &e1)
 			m++
 		}
@@ -636,7 +656,7 @@ func cubicGCD128(a0, a1, b0, b1 signed128, result uint64, x fp.Element) uint8 {
 		}
 
 		m := uint64(0)
-		for mod3_128(add128(e0, e1)) == 0 {
+		for (mod3_128(e0)+mod3_128(e1))%3 == 0 {
 			divBy1MinusOmega128(&e0, &e1)
 			m++
 		}

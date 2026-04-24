@@ -9,9 +9,9 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
+	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
 )
 
 // ------------------------------------------------------------

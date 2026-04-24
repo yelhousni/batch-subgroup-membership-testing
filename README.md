@@ -1,6 +1,7 @@
 # Batch subgroup membership testing
 
-[![License](https://img.shields.io/badge/license-apache-2)](LICENSE)
+[![License](https://img.shields.io/badge/license-apache-2)](LICENSE)  [![Go Report Card](https://goreportcard.com/badge/github.com/yelhousni/batch-subgroup-membership-testing)](https://goreportcard.com/report/github.com/yelhousni/batch-subgroup-membership-testing) 
+
 
 <p align="center">
   <picture>

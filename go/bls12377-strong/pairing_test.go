@@ -10,10 +10,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
-	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fr"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/prop"
+	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
+	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fr"
 )
 
 // ------------------------------------------------------------

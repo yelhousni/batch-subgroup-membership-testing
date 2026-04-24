@@ -1,8 +1,8 @@
 package fptower
 
 import (
-	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
 	"github.com/leanovate/gopter"
+	"github.com/yelhousni/batch-subgroup-membership/go/bls12377-strong/fp"
 )
 
 // ------------------------------------------------------------

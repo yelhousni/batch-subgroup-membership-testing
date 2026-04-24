@@ -1,6 +1,14 @@
 # Batch subgroup membership testing
 
-Related code to the research paper "Batch subgroup membership testing on pairing-friendly curves", [e-print 2025/1311](https://eprint.iacr.org/2025/1311).
+[![License](https://img.shields.io/badge/license-apache-2)](LICENSE)
+
+<p align="center">
+  <picture>
+    <img src="illustration.png" width="200">
+  </picture>
+</p>
+
+Companion code for the research article *"Batch subgroup membership testing on pairing-friendly curves"*, [e-print 2025/1311](https://eprint.iacr.org/2025/1311).
 
 *Authors: [Dimitri Koshelev](https://github.com/Dimitri-Koshelev), [Youssef El Housni](https://github.com/yelhousni) and [Georgios Fotiadis](https://github.com/gfotiadis).*
 

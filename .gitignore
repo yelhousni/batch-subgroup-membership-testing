@@ -30,3 +30,9 @@ go.work.sum
 # sage
 *.sage.py
 *.log
+
+# blind submission artifact
+scripts/
+artifact/
+artifact.tar.gz
+artifact.zip

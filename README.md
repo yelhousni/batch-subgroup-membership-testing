@@ -4,7 +4,7 @@
 
 <p align="center">
   <picture>
-    <img src="illustration.png" width="200">
+    <img src="illustration.png" width="350">
   </picture>
 </p>
 

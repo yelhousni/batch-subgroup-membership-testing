@@ -156,6 +156,30 @@ func TestTatePairings(t *testing.T) {
 	properties.TestingRun(t, gopter.ConsoleReporter(false))
 }
 
+func TestElementCubicSymbol(t *testing.T) {
+	t.Parallel()
+	parameters := gopter.DefaultTestParameters()
+	if testing.Short() {
+		parameters.MinSuccessfulTests = 1
+	} else {
+		parameters.MinSuccessfulTests = 100
+	}
+
+	properties := gopter.NewProperties(parameters)
+
+	properties.Property("IsCubicResidueFast should output same result as Exp by (p-1)/3", prop.ForAll(
+		func(a fp.Element) bool {
+			var exp big.Int
+			exp.Sub(fp.Modulus(), big.NewInt(1)).Div(&exp, big.NewInt(3))
+			b := *expByp3(&a)
+			return IsCubicResidueFast(&a) == b.IsOne()
+		},
+		GenFp(),
+	))
+
+	properties.TestingRun(t, gopter.ConsoleReporter(false))
+}
+
 // benches
 func BenchmarkIsInSubGroupBatchNaiveShort(b *testing.B) {
 	const nbSamples = 100

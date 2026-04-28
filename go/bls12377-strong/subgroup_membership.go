@@ -110,8 +110,7 @@ func isSecondTateOne(point G1Affine) bool {
 	var tate, one fp.Element
 	one.SetOne()
 	tate.Sub(&point.Y, &one)
-	tate = *expByp3(&tate)
-	return tate.IsOne()
+	return IsCubicResidueFast(&tate)
 }
 
 // expByp3 uses a short addition chain to compute x^p3 where p3=(p-1)/3 .

@@ -28,3 +28,26 @@ The code uses [gnark-crypto](https://github.com/ConsenSys/gnark-crypto) Golang l
     - `parallel/` contains utils for code parallelism.
 - `sage/` contains SageMath scripts to validate formulas related to the elliptic curves and the Tate pairings. It also contains the scripts that were used to find the new BLS12 curves.
 - `magma/` contains a MAGMA script to validate formulas and tables related to section 2.
+- `paperbench/` contains the benchmark helpers used for the paper's common-operation tables.
+
+## Benchmarks
+The repository includes benchmark helpers for the paper figures and tables.
+
+To reproduce the subgroup-membership benchmarks at the batch sizes used in the paper:
+
+```bash
+go test -run '^$' -bench BenchmarkPaperComparison ./go/bls12381
+go test -run '^$' -bench BenchmarkPaperComparison ./go/bls12377
+go test -run '^$' -bench BenchmarkPaperComparison ./go/bls12377-strong
+go test -run '^$' -bench BenchmarkPaperComparison ./go/bls12376-strong
+```
+
+The `bls12-381` benchmark reports the naive method, the full two-step method, and `Step 2` alone. The other three curve packages report the naive method and the full two-step method.
+
+To reproduce the common-operation benchmarks used in the appendix tables:
+
+```bash
+go test -run '^$' -bench . ./paperbench
+```
+
+For single-core measurements, pin the process to one core, for example with `taskset -c 0`.
